@@ -13,6 +13,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   uint256 public MIN_REWARD = 1 * (10 ** decimals()) / 100; // 0.01 SPVC
   uint256 public REWARD_HALVING_TIME = 144 * 30; // every 432 blocks
   uint256 public CONFIRMATIONS = 6;
+  uint256 public BLOCKS_TO_STORE = 144 * 60; // Store two months of data in contract
   
   uint256 public initialEpochTime;
   uint256 private confirmedBlocks = 0;
@@ -151,13 +152,13 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
     }
 
   function parseBytesToBlockHeader(bytes calldata blockHeaderBytes) view public returns (BlockHeader memory result) {
-    require(blockHeaderBytes.length == 80);
+    require(blockHeaderBytes.length >= 80);
     result = BlockHeader({
       previousHeaderHash: leToBytes32(blockHeaderBytes, 4),
       merkleRootHash: leToBytes32(blockHeaderBytes, 36),
       time: leToUint32(blockHeaderBytes, 68),
       nBits: leToBytes4(blockHeaderBytes, 72),
-      blockHash: sha256(abi.encodePacked(sha256(blockHeaderBytes))),
+      blockHash: sha256(abi.encodePacked(sha256(blockHeaderBytes[0: 80]))),
       blockHeight: 0,
       submitter: msg.sender
     });
@@ -178,6 +179,14 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
       confirmedBlocks++;
 
       _allocateTokens(msg.sender);
+    }
+  }
+
+  function clearBlock(BlockHeader memory header) private {
+    bytes32 blockHeaderHashToClear = blockHeightToBlockHash[header.blockHeight - BLOCKS_TO_STORE];
+    if (blockHeaderHashToClear != 0x0) {
+      delete blocks[blockHeaderHashToClear];
+      delete blockHeightToBlockHash[header.blockHeight - BLOCKS_TO_STORE];
     }
   }
 
@@ -207,6 +216,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
 
     // Confirm the current - 6 block
     confirmBlock(header);
+
+    // Clear earliest block data
+    clearBlock(header);
     
   }
 
