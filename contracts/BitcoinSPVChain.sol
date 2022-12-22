@@ -160,6 +160,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
      The function also checks if the user holds a minimum amount of tokens in their account equivalent to currentReward
    */
   function getTxMerkleRootAtHeight(uint256 height) external view returns (bytes32) {
+    /* 
+      Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
+      to be able to use this function and not allow any arbitrary contracts.
+    */
      require(balanceOf(tx.origin) >= currentReward);
      return blocks[blockHeightToBlockHash[height]].merkleRootHash;
   }
@@ -169,6 +173,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
      The function also checks if the user holds a minimum amount of tokens in their account equivalent to currentReward
    */
   function getBlockHeader(uint256 height) external view returns (BlockHeader memory) {
+    /* 
+      Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
+      to be able to use this function and not allow any arbitrary contract
+    */
      require(balanceOf(tx.origin) >= currentReward);
      return blocks[blockHeightToBlockHash[height]];
   }

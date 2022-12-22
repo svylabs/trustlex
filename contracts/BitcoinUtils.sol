@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
+import {SafeMath} from "./SafeMath.sol";
 
 library BitcoinUtils {
+  
+  using SafeMath for uint256;
 
   /** Retarget period for Bitcoin Difficulty Adjustment */
   uint256 public constant RETARGET_PERIOD = 2 * 7 * 24 * 60 * 60;  // 2 weeks in seconds
