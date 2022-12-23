@@ -97,7 +97,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
         break;
       }
     }
-    if (previousHeaderHash != 0x0) {
+    // Validate if the block is not confirmed already
+    if (previousHeaderHash != 0x0 && blockHeightToBlockHash[header.blockHeight - CONFIRMATIONS] == 0x0) {
       // Set confirmed block height
       blockHeightToBlockHash[header.blockHeight - CONFIRMATIONS] = previousHeaderHash;
       confirmedBlocks++;
@@ -135,6 +136,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
    */
   function submitBlock(bytes calldata blockHeader) external {
     BlockHeader memory header = _parseBytesToBlockHeader(blockHeader);
+    // Check if the block has not been submitted before
+    require (blocks[header.blockHash].time == 0);
+
     bytes32 previousHeaderHash = BitcoinUtils._leToBytes32(blockHeader, 4);
     
     BlockHeader memory previousBlock = blocks[previousHeaderHash];
