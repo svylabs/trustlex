@@ -9,6 +9,8 @@ library BitcoinUtils {
   /** Retarget period for Bitcoin Difficulty Adjustment */
   uint256 public constant RETARGET_PERIOD = 2 * 7 * 24 * 60 * 60;  // 2 weeks in seconds
 
+  uint256 public constant MAX_TARGET = 0x00000000FFFF0000000000000000000000000000000000000000000000000000;
+
     /**
      input: 0x...01020304....., 3
      output: 0x04030201
@@ -94,9 +96,47 @@ library BitcoinUtils {
   }
 
   function _nBitsToTarget(bytes4 nBits) pure public returns (uint256 target) {
-    uint256 _mantissa = uint256(uint32(nBits) & 0x00ffffff);
+    uint256 _mantissa = uint256(uint32(nBits) & 0x007fffff);
     uint256 _exponent = (uint256(uint32(nBits) & uint32(0xff000000)) >> 24).sub(3);
     return _mantissa.mul(256 ** _exponent);
+  }
+
+  function _targetToNBits(uint256 target) pure public returns (uint32 compact) {
+     if (target == 0) {
+        return 0;
+     }
+     // Since the base for the exponent is 256, the exponent can be treated
+     // as the number of bytes.  So, shift the number right or left
+     // accordingly.  This is equivalent to:
+     // mantissa = mantissa / 256^(exponent-3)
+	uint32 mantissa;
+	uint32 exponent = 0;
+        uint256 _target = target;
+        while (_target != 0) {
+                exponent++;
+                _target >>= 8;
+        }
+        if (exponent <= 3) {
+		mantissa = uint32(target & 0xffffffff);
+		mantissa <<= 8 * (3 - exponent);
+	} else {
+		// Use a copy to avoid modifying the caller's original number.
+		mantissa = uint32((target >> (8 * (exponent - 3))) & 0xffffffff);
+	}
+
+	// When the mantissa already has the sign bit set, the number is too
+	// large to fit into the available 23-bits, so divide the number by 256
+	// and increment the exponent accordingly.
+	if ((mantissa & 0x00800000) != 0) {
+		mantissa >>= 8;
+		exponent++;
+	}
+
+	// Pack the exponent, sign bit, and mantissa into an unsigned 32-bit
+	// int and return it.
+	compact = uint32(exponent<<24) | mantissa;
+
+	return compact;
   }
 
   /** 

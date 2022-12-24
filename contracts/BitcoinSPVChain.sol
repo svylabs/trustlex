@@ -38,6 +38,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   mapping (uint256 => bytes32) public blockHeightToBlockHash;
   event LOG(uint256 number);
   event LOG1(bytes32 number);
+  event LOG2(bytes4 bz);
   
 
   constructor(bytes memory initialConfirmedBlockHeader, uint256 height, uint32 _initialEpochTime) {
@@ -59,7 +60,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
    */
-  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) public returns (BlockHeader memory result) {
+  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) public view returns (BlockHeader memory result) {
     require(blockHeaderBytes.length >= 80);
     result = BlockHeader({
       previousHeaderHash: BitcoinUtils._leToBytes32(blockHeaderBytes, 4),
@@ -81,26 +82,28 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   function _validateBlock(BlockHeader memory header, BlockHeader memory previousBlock) public returns (bool result) {
     uint256 target = BitcoinUtils._nBitsToTarget(header.nBits);
     require(uint256(header.blockHash) < target); // Require blockHash < target
-
     uint256 epochStartBlockTime = 0;
     if (header.blockHeight % 2016 == 0) {
-       bytes32 epochStartBlockHash = blockHeightToBlockHash[header.blockHeight - 2015];
+       bytes32 epochStartBlockHash = blockHeightToBlockHash[header.blockHeight - 2016];
        if (epochStartBlockHash != 0x0) {
          epochStartBlockTime = blocks[epochStartBlockHash].time;
        } else {
          epochStartBlockTime = initialEpochTime;
        }
-       emit LOG(epochStartBlockTime);
-       emit LOG(previousBlock.time);
-       emit LOG(BitcoinUtils._nBitsToTarget(previousBlock.nBits));
        uint256 newTarget = BitcoinUtils._retargetAlgorithm(BitcoinUtils._nBitsToTarget(previousBlock.nBits), epochStartBlockTime, previousBlock.time);
-       emit LOG(uint256(uint32(header.nBits) & 0x00ffffff));
-       emit LOG((uint256((uint32(header.nBits) & uint32(0xff000000)) >> 24).sub(3)));
-       //require(newTarget == BitcoinUtils._nBitsToTarget(header.nBits));
+       require(bytes4(BitcoinUtils._targetToNBits(newTarget)) == header.nBits);
+       /*
+       emit LOG2(bytes4(BitcoinUtils._targetToNBits(newTarget)));
+       emit LOG2(header.nBits);
+       emit LOG1(bytes32(newTarget));
        emit LOG(newTarget);
        emit LOG(BitcoinUtils._nBitsToTarget(header.nBits));
        emit LOG1(bytes32(header.nBits));
-       emit LOG(newTarget & BitcoinUtils._nBitsToTarget(header.nBits));
+       emit LOG1(bytes32(newTarget & BitcoinUtils._nBitsToTarget(header.nBits)));
+       emit LOG1(bytes32(uint256(BitcoinUtils._targetToNBits(newTarget))));
+       emit LOG1(bytes32(uint256(BitcoinUtils._targetToNBits(BitcoinUtils._nBitsToTarget(previousBlock.nBits)))));
+       emit LOG1(bytes32(previousBlock.nBits));
+       */
     }
     return true;
   }
@@ -159,7 +162,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   function submitBlock(bytes calldata blockHeader) external override {
     BlockHeader memory header = _parseBytesToBlockHeader(blockHeader);
     // Check if the block has not been submitted before
-    //require (blocks[header.blockHash].time == 0);
+    require (blocks[header.blockHash].time == 0);
 
     bytes32 previousHeaderHash = header.previousHeaderHash;
     
