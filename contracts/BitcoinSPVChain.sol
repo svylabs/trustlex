@@ -32,7 +32,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   uint256 public currentReward = 50 * (10 ** decimals());
 
   /** Block Headers  */
-  mapping (bytes32 => BlockHeader) public blocks;
+  mapping (bytes32 => BlockHeader) private blocks;
 
   /** Mapping of block height to block hash */
   mapping (uint256 => bytes32) public blockHeightToBlockHash;
