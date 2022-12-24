@@ -23,7 +23,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   uint256 public BLOCKS_TO_STORE = 144 * 60; // Store two months of data in contract
   
   /** This is needed when doing the difficulty adjustment for the first time and is set by constructor */
-  uint256 public initialEpochTime;
+  uint32 public initialEpochTime;
 
   /** Total number of blocks confirmed by the contract */
   uint256 private confirmedBlocks = 0;
@@ -32,14 +32,25 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   uint256 public currentReward = 50 * (10 ** decimals());
 
   /** Block Headers  */
-  mapping (bytes32 => BlockHeader) private blocks;
+  mapping (bytes32 => BlockHeader) public blocks;
 
   /** Mapping of block height to block hash */
-  mapping (uint256 => bytes32) private blockHeightToBlockHash;
+  mapping (uint256 => bytes32) public blockHeightToBlockHash;
+  event LOG(uint256 number);
+  event LOG1(bytes32 number);
+  event LOG2(bytes4 bz);
   
 
-  constructor(bytes memory initialConfirmedBlockHeader, uint256 height, uint256 _initialEpochTime) {
-      BlockHeader memory header = this._parseBytesToBlockHeader(initialConfirmedBlockHeader);
+  constructor(bytes memory initialConfirmedBlockHeader, uint256 height, uint32 _initialEpochTime) {
+      BlockHeader memory header = BlockHeader({
+        previousHeaderHash: BitcoinUtils._leToBytes32(initialConfirmedBlockHeader, 4),
+        merkleRootHash: BitcoinUtils._leToBytes32(initialConfirmedBlockHeader, 36),
+        time: BitcoinUtils._leToUint32(initialConfirmedBlockHeader, 68),
+        nBits: BitcoinUtils._leToBytes4(initialConfirmedBlockHeader, 72),
+        blockHash: BitcoinUtils.swapEndian(sha256(abi.encodePacked(sha256(initialConfirmedBlockHeader)))),
+        blockHeight: 0,
+        submitter: msg.sender
+      });
       header.blockHeight = height;
       blocks[header.blockHash] = header;
       blockHeightToBlockHash[height] = header.blockHash;
@@ -49,14 +60,14 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
    */
-  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) view public returns (BlockHeader memory result) {
+  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) public view returns (BlockHeader memory result) {
     require(blockHeaderBytes.length >= 80);
     result = BlockHeader({
       previousHeaderHash: BitcoinUtils._leToBytes32(blockHeaderBytes, 4),
       merkleRootHash: BitcoinUtils._leToBytes32(blockHeaderBytes, 36),
       time: BitcoinUtils._leToUint32(blockHeaderBytes, 68),
       nBits: BitcoinUtils._leToBytes4(blockHeaderBytes, 72),
-      blockHash: sha256(abi.encodePacked(sha256(blockHeaderBytes[0: 80]))),
+      blockHash: BitcoinUtils.swapEndian(sha256(abi.encodePacked(sha256(blockHeaderBytes[0: 80])))),
       blockHeight: 0,
       submitter: msg.sender
     });
@@ -68,12 +79,11 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
        * Check if the block matches the difficulty target
        * Compute a new difficulty and verify if it's correct
    */
-  function _validateBlock(BlockHeader memory header, BlockHeader memory previousBlock) public view returns (bool result) {
+  function _validateBlock(BlockHeader memory header, BlockHeader memory previousBlock) public returns (bool result) {
     uint256 target = BitcoinUtils._nBitsToTarget(header.nBits);
     require(uint256(header.blockHash) < target); // Require blockHash < target
-
     uint256 epochStartBlockTime = 0;
-    if (header.blockHeight % 2016 == 1) {
+    if (header.blockHeight % 2016 == 0) {
        bytes32 epochStartBlockHash = blockHeightToBlockHash[header.blockHeight - 2016];
        if (epochStartBlockHash != 0x0) {
          epochStartBlockTime = blocks[epochStartBlockHash].time;
@@ -81,7 +91,19 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
          epochStartBlockTime = initialEpochTime;
        }
        uint256 newTarget = BitcoinUtils._retargetAlgorithm(BitcoinUtils._nBitsToTarget(previousBlock.nBits), epochStartBlockTime, previousBlock.time);
-       require(newTarget == BitcoinUtils._nBitsToTarget(header.nBits));
+       require(bytes4(BitcoinUtils._targetToNBits(newTarget)) == header.nBits);
+       /*
+       emit LOG2(bytes4(BitcoinUtils._targetToNBits(newTarget)));
+       emit LOG2(header.nBits);
+       emit LOG1(bytes32(newTarget));
+       emit LOG(newTarget);
+       emit LOG(BitcoinUtils._nBitsToTarget(header.nBits));
+       emit LOG1(bytes32(header.nBits));
+       emit LOG1(bytes32(newTarget & BitcoinUtils._nBitsToTarget(header.nBits)));
+       emit LOG1(bytes32(uint256(BitcoinUtils._targetToNBits(newTarget))));
+       emit LOG1(bytes32(uint256(BitcoinUtils._targetToNBits(BitcoinUtils._nBitsToTarget(previousBlock.nBits)))));
+       emit LOG1(bytes32(previousBlock.nBits));
+       */
     }
     return true;
   }
@@ -111,6 +133,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
      Clear older blocks
    */
   function _clearBlock(BlockHeader memory header) private {
+    if (header.blockHeight < BLOCKS_TO_STORE) {
+      return ;
+    }
     bytes32 blockHeaderHashToClear = blockHeightToBlockHash[header.blockHeight - BLOCKS_TO_STORE];
     if (blockHeaderHashToClear != 0x0) {
       delete blocks[blockHeaderHashToClear];
@@ -134,12 +159,12 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   /**
      submitBlock will be used by users to submit blocks to the contract
    */
-  function submitBlock(bytes calldata blockHeader) external {
+  function submitBlock(bytes calldata blockHeader) external override {
     BlockHeader memory header = _parseBytesToBlockHeader(blockHeader);
     // Check if the block has not been submitted before
     require (blocks[header.blockHash].time == 0);
 
-    bytes32 previousHeaderHash = BitcoinUtils._leToBytes32(blockHeader, 4);
+    bytes32 previousHeaderHash = header.previousHeaderHash;
     
     BlockHeader memory previousBlock = blocks[previousHeaderHash];
     header.blockHeight = previousBlock.blockHeight + 1;
@@ -150,6 +175,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
     }
 
     require(_validateBlock(header, previousBlock));
+    blocks[header.blockHash] = header;
 
     // Confirm the current - 6 block
     _confirmBlock(header);
@@ -163,7 +189,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
     getTxMerkleRootAtHeight returns the transaction merkle root at height specified or returns 0x0 if none exists.
      The function also checks if the user holds a minimum amount of tokens in their account equivalent to currentReward
    */
-  function getTxMerkleRootAtHeight(uint256 height) external view returns (bytes32) {
+  function getTxMerkleRootAtHeight(uint256 height) external view override returns (bytes32) {
     /* 
       Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
       to be able to use this function and not allow any arbitrary contracts.
@@ -176,7 +202,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
      getBlockHeader returns the BlockHeader at height specified.
      The function also checks if the user holds a minimum amount of tokens in their account equivalent to currentReward
    */
-  function getBlockHeader(uint256 height) external view returns (BlockHeader memory) {
+  function getBlockHeader(uint256 height) external view override returns (BlockHeader memory) {
     /* 
       Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
       to be able to use this function and not allow any arbitrary contract
