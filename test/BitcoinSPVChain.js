@@ -25,14 +25,14 @@ contract("BitcoinSPVChain: Happy Case", (accounts) => {
 
 fs.readFile('./test/files/difficulty_change_test.csv', 'utf8', (err, data) => {
     contract("BitcoinSPVChain: Test difficulty change", (accounts) => {
-    const [owner, user1, user2] = accounts;
-    const txParams = { from: owner };
+        const [owner, user1, user2] = accounts;
+        const txParams = { from: owner };
 
-    beforeEach(async function() {
-    });
+        beforeEach(async function() {
+        });
 
-    
-    const lines = data.split("\n");
+        
+        const lines = data.split("\n");
         const rand = Math.floor(Math.random() * 100) % 4 ;
         lines.forEach((line, i) => {
             it ('submit block - ' + i + ((i % 4 != rand)? " skipped": ""), async function() {
@@ -56,4 +56,38 @@ fs.readFile('./test/files/difficulty_change_test.csv', 'utf8', (err, data) => {
         });
     });
 
+})
+
+fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
+    contract("BitcoinSPVChain: Test confirmation", (accounts) => {
+        const [owner, user1, user2] = accounts;
+        const txParams = { from: owner };
+        const lines = data.split("\n");
+
+        const parts = lines[0].split(" ");
+        
+        lines.forEach((line, i) => {
+            it ('submit block - ' + i, async function() {
+                const parts = line.split(" ");
+                if (parts[0] === '') {
+                    return;
+                }
+                if (i == 0) {
+                    console.log("Creating the contract..");
+                    spvchain.link(await BitcoinUtils.deployed());
+                    spvchain.link(await SafeMath.deployed());
+                    this.bitcoinSPVChain = await spvchain.new(parts[1], parseInt(parts[2]), 1630333672, txParams);
+                } else {
+                    console.log("Executing..." + i);
+                    const res = await this.bitcoinSPVChain.submitBlock(parts[1], txParams);
+                    console.log(res);
+                }
+                const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[0], txParams);
+                assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
+                assert.equal(header.merkleRootHash, parts[4], 'Transaction merkle root hash doesn\'t match');
+                assert.equal(header.previousHeaderHash, parts[5], 'Previous header hash doesn\'t match');
+            });
+        });
+        
+    });
 })
