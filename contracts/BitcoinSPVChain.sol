@@ -36,10 +36,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
 
   /** Mapping of block height to block hash */
   mapping (uint256 => bytes32) public blockHeightToBlockHash;
-  event LOG(uint256 number);
-  event LOG1(bytes32 number);
-  event LOG2(bytes4 bz);
-  
 
   constructor(bytes memory initialConfirmedBlockHeader, uint256 height, uint32 _initialEpochTime) {
       BlockHeader memory header = BlockHeader({
@@ -207,8 +203,17 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
       Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
       to be able to use this function and not allow any arbitrary contract
     */
-     require(balanceOf(tx.origin) >= currentReward);
+     require((balanceOf(tx.origin) >= currentReward) || (blocks[blockHeightToBlockHash[height]].submitter == tx.origin));
      return blocks[blockHeightToBlockHash[height]];
+  }
+
+  function getBlockHeader(bytes32 blockHash) external view override returns (BlockHeader memory) {
+    /* 
+      Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
+      to be able to use this function and not allow any arbitrary contract
+    */
+    require((balanceOf(tx.origin) >= currentReward) || (blocks[blockHash].submitter == tx.origin));
+    return blocks[blockHash];
   }
 
 }
