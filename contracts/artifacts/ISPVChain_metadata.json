@@ -1,0 +1,134 @@
+{
+	"compiler": {
+		"version": "0.8.7+commit.e28d00a7"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "height",
+						"type": "uint256"
+					}
+				],
+				"name": "getBlockHeader",
+				"outputs": [
+					{
+						"components": [
+							{
+								"internalType": "bytes32",
+								"name": "previousHeaderHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRootHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "blockHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "uint256",
+								"name": "blockHeight",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "submitter",
+								"type": "address"
+							},
+							{
+								"internalType": "uint32",
+								"name": "time",
+								"type": "uint32"
+							},
+							{
+								"internalType": "bytes4",
+								"name": "nBits",
+								"type": "bytes4"
+							}
+						],
+						"internalType": "struct BlockHeader",
+						"name": "",
+						"type": "tuple"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "height",
+						"type": "uint256"
+					}
+				],
+				"name": "getTxMerkleRootAtHeight",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "blockHeaderBytes",
+						"type": "bytes"
+					}
+				],
+				"name": "submitBlock",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"ISPVChain.sol": "ISPVChain"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"ISPVChain.sol": {
+			"keccak256": "0x5d016075fa1fdcf82c726d71f399ab6e44302b16862e302e09ad8b3c08d4b1a0",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://828889c8f9877a2b86dc79ead11d3d0f39fa5e56860d6b0115a2178e6999290f",
+				"dweb:/ipfs/QmQfvqn9UmhCEQ7at6VaMR632xd2XenvCQxxEAGp2pktJ6"
+			]
+		}
+	},
+	"version": 1
+}

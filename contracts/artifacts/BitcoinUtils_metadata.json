@@ -1,0 +1,221 @@
+{
+	"compiler": {
+		"version": "0.8.7+commit.e28d00a7"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [],
+				"name": "MAX_TARGET",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "RETARGET_PERIOD",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "bz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "uint256",
+						"name": "startIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "_leToBytes32",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "result",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "bz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "uint256",
+						"name": "startIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "_leToBytes4",
+				"outputs": [
+					{
+						"internalType": "bytes4",
+						"name": "result",
+						"type": "bytes4"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "bz",
+						"type": "bytes"
+					},
+					{
+						"internalType": "uint256",
+						"name": "startIndex",
+						"type": "uint256"
+					}
+				],
+				"name": "_leToUint32",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "result",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes4",
+						"name": "nBits",
+						"type": "bytes4"
+					}
+				],
+				"name": "_nBitsToTarget",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "target",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "target",
+						"type": "uint256"
+					}
+				],
+				"name": "_targetToNBits",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "compact",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "bz",
+						"type": "bytes32"
+					}
+				],
+				"name": "swapEndian",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "result",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "pure",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {
+				"RETARGET_PERIOD()": {
+					"notice": "Retarget period for Bitcoin Difficulty Adjustment "
+				},
+				"_leToBytes32(bytes,uint256)": {
+					"notice": "input: 0x...000102030405060708090A0B0C0D0E0F0102030405060708090A0B0C0D0E0F...., 32 output: 0x0F0E0D0C0B0A090807060504030201000F0E0D0C0B0A09080706050403020100"
+				},
+				"_leToBytes4(bytes,uint256)": {
+					"notice": "input: 0x...01020304....., 3 output: 0x04030201"
+				},
+				"_leToUint32(bytes,uint256)": {
+					"notice": "input: 0x...01020304....., 3 output: 0x04030201"
+				}
+			},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"BitcoinUtils.sol": "BitcoinUtils"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"BitcoinUtils.sol": {
+			"keccak256": "0x6519c682cbb284d08202a8bc6efc64489058efa3bb383d2f159891f7c126e441",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://3f5bd79463baa5e40f917738ee85084e9b6a300e13ce4432502c50199ceedcd5",
+				"dweb:/ipfs/QmWKDKcEi4K9obYKAWWr2AC5wAsp5sq5tkecDvpnu661Vq"
+			]
+		},
+		"SafeMath.sol": {
+			"keccak256": "0x674b71974a26226c06761cc09b48c04af6e69c0187670c0933314c37a94be7ba",
+			"urls": [
+				"bzz-raw://ef95d5a5b283b3725f7491a9ef6fffcab4031d8d4e90f81ac0f039ca70543acc",
+				"dweb:/ipfs/QmZcf3cS4nkbBM2aBYUJJqKSBaF5XH9jcke3MEQbpm6PrH"
+			]
+		}
+	},
+	"version": 1
+}

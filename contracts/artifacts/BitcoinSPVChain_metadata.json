@@ -1,0 +1,877 @@
+{
+	"compiler": {
+		"version": "0.8.7+commit.e28d00a7"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "initialConfirmedBlockHeader",
+						"type": "bytes"
+					},
+					{
+						"internalType": "uint256",
+						"name": "height",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint32",
+						"name": "_initialEpochTime",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "spender",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "value",
+						"type": "uint256"
+					}
+				],
+				"name": "Approval",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "number",
+						"type": "uint256"
+					}
+				],
+				"name": "LOG",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "bytes32",
+						"name": "number",
+						"type": "bytes32"
+					}
+				],
+				"name": "LOG1",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "bytes4",
+						"name": "bz",
+						"type": "bytes4"
+					}
+				],
+				"name": "LOG2",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "uint256",
+						"name": "value",
+						"type": "uint256"
+					}
+				],
+				"name": "Transfer",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "BLOCKS_TO_STORE",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "CONFIRMATIONS",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "MIN_REWARD",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "REWARD_HALVING_TIME",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "blockHeaderBytes",
+						"type": "bytes"
+					}
+				],
+				"name": "_parseBytesToBlockHeader",
+				"outputs": [
+					{
+						"components": [
+							{
+								"internalType": "bytes32",
+								"name": "previousHeaderHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRootHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "blockHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "uint256",
+								"name": "blockHeight",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "submitter",
+								"type": "address"
+							},
+							{
+								"internalType": "uint32",
+								"name": "time",
+								"type": "uint32"
+							},
+							{
+								"internalType": "bytes4",
+								"name": "nBits",
+								"type": "bytes4"
+							}
+						],
+						"internalType": "struct BlockHeader",
+						"name": "result",
+						"type": "tuple"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"components": [
+							{
+								"internalType": "bytes32",
+								"name": "previousHeaderHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRootHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "blockHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "uint256",
+								"name": "blockHeight",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "submitter",
+								"type": "address"
+							},
+							{
+								"internalType": "uint32",
+								"name": "time",
+								"type": "uint32"
+							},
+							{
+								"internalType": "bytes4",
+								"name": "nBits",
+								"type": "bytes4"
+							}
+						],
+						"internalType": "struct BlockHeader",
+						"name": "header",
+						"type": "tuple"
+					},
+					{
+						"components": [
+							{
+								"internalType": "bytes32",
+								"name": "previousHeaderHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRootHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "blockHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "uint256",
+								"name": "blockHeight",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "submitter",
+								"type": "address"
+							},
+							{
+								"internalType": "uint32",
+								"name": "time",
+								"type": "uint32"
+							},
+							{
+								"internalType": "bytes4",
+								"name": "nBits",
+								"type": "bytes4"
+							}
+						],
+						"internalType": "struct BlockHeader",
+						"name": "previousBlock",
+						"type": "tuple"
+					}
+				],
+				"name": "_validateBlock",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "result",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "owner",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "spender",
+						"type": "address"
+					}
+				],
+				"name": "allowance",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "spender",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "approve",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "account",
+						"type": "address"
+					}
+				],
+				"name": "balanceOf",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"name": "blockHeightToBlockHash",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"name": "blocks",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "previousHeaderHash",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "merkleRootHash",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes32",
+						"name": "blockHash",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "uint256",
+						"name": "blockHeight",
+						"type": "uint256"
+					},
+					{
+						"internalType": "address",
+						"name": "submitter",
+						"type": "address"
+					},
+					{
+						"internalType": "uint32",
+						"name": "time",
+						"type": "uint32"
+					},
+					{
+						"internalType": "bytes4",
+						"name": "nBits",
+						"type": "bytes4"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "currentReward",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "decimals",
+				"outputs": [
+					{
+						"internalType": "uint8",
+						"name": "",
+						"type": "uint8"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "spender",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "subtractedValue",
+						"type": "uint256"
+					}
+				],
+				"name": "decreaseAllowance",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "height",
+						"type": "uint256"
+					}
+				],
+				"name": "getBlockHeader",
+				"outputs": [
+					{
+						"components": [
+							{
+								"internalType": "bytes32",
+								"name": "previousHeaderHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "merkleRootHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "bytes32",
+								"name": "blockHash",
+								"type": "bytes32"
+							},
+							{
+								"internalType": "uint256",
+								"name": "blockHeight",
+								"type": "uint256"
+							},
+							{
+								"internalType": "address",
+								"name": "submitter",
+								"type": "address"
+							},
+							{
+								"internalType": "uint32",
+								"name": "time",
+								"type": "uint32"
+							},
+							{
+								"internalType": "bytes4",
+								"name": "nBits",
+								"type": "bytes4"
+							}
+						],
+						"internalType": "struct BlockHeader",
+						"name": "",
+						"type": "tuple"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "height",
+						"type": "uint256"
+					}
+				],
+				"name": "getTxMerkleRootAtHeight",
+				"outputs": [
+					{
+						"internalType": "bytes32",
+						"name": "",
+						"type": "bytes32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "spender",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "addedValue",
+						"type": "uint256"
+					}
+				],
+				"name": "increaseAllowance",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "initialEpochTime",
+				"outputs": [
+					{
+						"internalType": "uint32",
+						"name": "",
+						"type": "uint32"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "name",
+				"outputs": [
+					{
+						"internalType": "string",
+						"name": "",
+						"type": "string"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "bytes",
+						"name": "blockHeader",
+						"type": "bytes"
+					}
+				],
+				"name": "submitBlock",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "symbol",
+				"outputs": [
+					{
+						"internalType": "string",
+						"name": "",
+						"type": "string"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "totalSupply",
+				"outputs": [
+					{
+						"internalType": "uint256",
+						"name": "",
+						"type": "uint256"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "transfer",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "from",
+						"type": "address"
+					},
+					{
+						"internalType": "address",
+						"name": "to",
+						"type": "address"
+					},
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					}
+				],
+				"name": "transferFrom",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"allowance(address,address)": {
+					"details": "See {IERC20-allowance}."
+				},
+				"approve(address,uint256)": {
+					"details": "See {IERC20-approve}. NOTE: If `amount` is the maximum `uint256`, the allowance is not updated on `transferFrom`. This is semantically equivalent to an infinite approval. Requirements: - `spender` cannot be the zero address."
+				},
+				"balanceOf(address)": {
+					"details": "See {IERC20-balanceOf}."
+				},
+				"decimals()": {
+					"details": "Returns the number of decimals used to get its user representation. For example, if `decimals` equals `2`, a balance of `505` tokens should be displayed to a user as `5.05` (`505 / 10 ** 2`). Tokens usually opt for a value of 18, imitating the relationship between Ether and Wei. This is the value {ERC20} uses, unless this function is overridden; NOTE: This information is only used for _display_ purposes: it in no way affects any of the arithmetic of the contract, including {IERC20-balanceOf} and {IERC20-transfer}."
+				},
+				"decreaseAllowance(address,uint256)": {
+					"details": "Atomically decreases the allowance granted to `spender` by the caller. This is an alternative to {approve} that can be used as a mitigation for problems described in {IERC20-approve}. Emits an {Approval} event indicating the updated allowance. Requirements: - `spender` cannot be the zero address. - `spender` must have allowance for the caller of at least `subtractedValue`."
+				},
+				"increaseAllowance(address,uint256)": {
+					"details": "Atomically increases the allowance granted to `spender` by the caller. This is an alternative to {approve} that can be used as a mitigation for problems described in {IERC20-approve}. Emits an {Approval} event indicating the updated allowance. Requirements: - `spender` cannot be the zero address."
+				},
+				"name()": {
+					"details": "Returns the name of the token."
+				},
+				"symbol()": {
+					"details": "Returns the symbol of the token, usually a shorter version of the name."
+				},
+				"totalSupply()": {
+					"details": "See {IERC20-totalSupply}."
+				},
+				"transfer(address,uint256)": {
+					"details": "See {IERC20-transfer}. Requirements: - `to` cannot be the zero address. - the caller must have a balance of at least `amount`."
+				},
+				"transferFrom(address,address,uint256)": {
+					"details": "See {IERC20-transferFrom}. Emits an {Approval} event indicating the updated allowance. This is not required by the EIP. See the note at the beginning of {ERC20}. NOTE: Does not update the allowance if the current allowance is the maximum `uint256`. Requirements: - `from` and `to` cannot be the zero address. - `from` must have a balance of at least `amount`. - the caller must have allowance for ``from``'s tokens of at least `amount`."
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {
+				"BLOCKS_TO_STORE()": {
+					"notice": "Deletes all prior blocks "
+				},
+				"CONFIRMATIONS()": {
+					"notice": "Number of blocks needed on top of an existing block for confirmation of a certain block "
+				},
+				"MIN_REWARD()": {
+					"notice": "Minimum Reward to be paid by the contract for submitting blocks "
+				},
+				"REWARD_HALVING_TIME()": {
+					"notice": "Reward halving time for block submission "
+				},
+				"_parseBytesToBlockHeader(bytes)": {
+					"notice": "Parses BlockHeader given as bytes and returns a struct BlockHeader"
+				},
+				"_validateBlock((bytes32,bytes32,bytes32,uint256,address,uint32,bytes4),(bytes32,bytes32,bytes32,uint256,address,uint32,bytes4))": {
+					"notice": "Validates if the incoming block is valid. Check if the block matches the difficulty target Compute a new difficulty and verify if it's correct"
+				},
+				"blockHeightToBlockHash(uint256)": {
+					"notice": "Mapping of block height to block hash "
+				},
+				"blocks(bytes32)": {
+					"notice": "Block Headers  "
+				},
+				"currentReward()": {
+					"notice": "Current reward for submitting the blocks "
+				},
+				"getBlockHeader(uint256)": {
+					"notice": "getBlockHeader returns the BlockHeader at height specified. The function also checks if the user holds a minimum amount of tokens in their account equivalent to currentReward"
+				},
+				"getTxMerkleRootAtHeight(uint256)": {
+					"notice": "getTxMerkleRootAtHeight returns the transaction merkle root at height specified or returns 0x0 if none exists. The function also checks if the user holds a minimum amount of tokens in their account equivalent to currentReward"
+				},
+				"initialEpochTime()": {
+					"notice": "This is needed when doing the difficulty adjustment for the first time and is set by constructor "
+				},
+				"submitBlock(bytes)": {
+					"notice": "submitBlock will be used by users to submit blocks to the contract"
+				}
+			},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"BitcoinSPVChain.sol": "BitcoinSPVChain"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": false,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"BitcoinSPVChain.sol": {
+			"keccak256": "0x85c5a5dd7c428a6e71f86cbf80dc6f6481dc69de9a2070088691d63f36d45612",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://cdbc3ed00fd5972e3c85c8aecfb78e9418b2daa9d2594341098dfa720e2c4747",
+				"dweb:/ipfs/QmNaxpXm9HpdWdTbSEw1JrP96BCp5mu3444QXrutjxJWsw"
+			]
+		},
+		"BitcoinUtils.sol": {
+			"keccak256": "0x6519c682cbb284d08202a8bc6efc64489058efa3bb383d2f159891f7c126e441",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://3f5bd79463baa5e40f917738ee85084e9b6a300e13ce4432502c50199ceedcd5",
+				"dweb:/ipfs/QmWKDKcEi4K9obYKAWWr2AC5wAsp5sq5tkecDvpnu661Vq"
+			]
+		},
+		"ERC20.sol": {
+			"keccak256": "0x22b44475ee56900534ed0637e84a26e38f22250d2acd35eed813ac0ef49b4a00",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://65e679b47f1bb83186ba93b573d5d914888b6ffcd1a43d57593b4e98191a1a16",
+				"dweb:/ipfs/Qmbve14M1jBUBqLUD14ByLu9S4PC9CLskKfvxHWPe2Wg8n"
+			]
+		},
+		"IERC20.sol": {
+			"keccak256": "0x6db03193525cf9c4163fe511e9933acaed6c0b0fb1780033fab2bd25ea9f6039",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://824a557d627cad6c4ce3423568d7d0d8c0a643b35b181dc1e3eeb213e7e246bb",
+				"dweb:/ipfs/Qmb5uSFMyNXzZU8RPoNKD6ZXQ8M1BxBvkPsXxnA7cPrer9"
+			]
+		},
+		"ISPVChain.sol": {
+			"keccak256": "0x5d016075fa1fdcf82c726d71f399ab6e44302b16862e302e09ad8b3c08d4b1a0",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://828889c8f9877a2b86dc79ead11d3d0f39fa5e56860d6b0115a2178e6999290f",
+				"dweb:/ipfs/QmQfvqn9UmhCEQ7at6VaMR632xd2XenvCQxxEAGp2pktJ6"
+			]
+		},
+		"SafeMath.sol": {
+			"keccak256": "0x674b71974a26226c06761cc09b48c04af6e69c0187670c0933314c37a94be7ba",
+			"urls": [
+				"bzz-raw://ef95d5a5b283b3725f7491a9ef6fffcab4031d8d4e90f81ac0f039ca70543acc",
+				"dweb:/ipfs/QmZcf3cS4nkbBM2aBYUJJqKSBaF5XH9jcke3MEQbpm6PrH"
+			]
+		}
+	},
+	"version": 1
+}
