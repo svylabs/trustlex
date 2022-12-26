@@ -46,13 +46,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   /** Time when the fork was detected  */
   uint256 public forkDetectedTime = 0;
 
-  /** Total number of affected blocks during fork */
-  uint256 public forkAffectedBlockCount = 0;
-
   /** When was the last fork retarget time */
-  uint256 public forkRetargetTime = 0;
+  uint256 public confirmationRetargetTimestamp = 0;
 
-  uint256 public FORK_RETARGET_TIME_PERIOD = 6 * 60 * 60;
+  uint256 public CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
 
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
@@ -150,19 +147,19 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   }
 
   /**
-     If a fork has been detected, reset the block hash for the confirmed block heights to 0x0
+     If a fork has been detected, reset the block hash for the confirmed block heights to 0x0 and
+     increase the number of confirmations
    */
   function _forkDetected(uint256 height, bytes32 collidingBlockHash) private {
       uint256 affectedBlocks = confirmedBlockHeight - height + 1;
       for (uint256 _h = height; _h <= confirmedBlockHeight; _h++) {
          blockHeightToBlockHash[_h] = 0x0;
       }
-      CONFIRMATIONS = CONFIRMATIONS * 2 + affectedBlocks;
+      CONFIRMATIONS = (CONFIRMATIONS * 4 ) / 3 + affectedBlocks;
       emit FORK_DETECTED(height, blockHeightToBlockHash[height], collidingBlockHash, CONFIRMATIONS);
       forkDetectedTime = block.timestamp;
-      forkAffectedBlockCount = affectedBlocks;
       // Higher rewards for notifying of forks
-      _allocateTokens(msg.sender, 10); 
+      _allocateTokens(msg.sender, 15); 
   }
 
   /**
@@ -195,13 +192,13 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   /**
    */
   function _resetConfirmations(BlockHeader memory header, bytes32 currentBlockHash) private {
-      if ((block.timestamp - forkDetectedTime) >= FORK_RETARGET_TIME_PERIOD && (block.timestamp - forkRetargetTime) >= FORK_RETARGET_TIME_PERIOD) {
+      if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
           uint256 previousConfirmations = CONFIRMATIONS;
           CONFIRMATIONS = (CONFIRMATIONS * 3) / 4;
           if (CONFIRMATIONS < MIN_CONFIRMATIONS) {
             CONFIRMATIONS = MIN_CONFIRMATIONS;
           }
-          forkRetargetTime = block.timestamp;
+          confirmationRetargetTimestamp = block.timestamp;
           // TODO: Confirm blocks from (height - previousConfirmations) to (height - CONFIRMATIONS)
       }
   }
