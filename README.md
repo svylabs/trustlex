@@ -18,7 +18,7 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 
 ## Accidental Reorgs
 - If there are block reorgs happening inside the confirmation window of 6 blocks, the contract handles it gracefully.
-- If there are block reorgs happening after a block has been confirmed, the contract increases the time to confirm a block. Subsequently when the fork has resolved, the confirmation time is decreased by the contract. The minimum number of confirmations set by the contract is 6. The dapp using the contract should take into account the number of confirmations to enable / disable fund locking mechanism.
+- If there are block reorgs happening after a block has been confirmed, the contract increases the time to confirm a block. Subsequently when the fork has resolved, the confirmation time is decreased by the contract. The minimum number of confirmations set by the contract is 6. The dapp using the contract should take into account the number of confirmations to enable / disable fund locking mechanism. The contract also rewards 20 times the current reward for users notifying of any forks.
 
 ## HardForks
 - The contract doesn't currently handle hardforks. The proposed solution is to fork a new Relay contract by the token holders.
