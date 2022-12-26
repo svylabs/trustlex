@@ -16,3 +16,7 @@ interface ISPVChain {
       function getBlockHeader(uint256 height) external view returns (BlockHeader memory);
       function getBlockHeader(bytes32 blockHash) external view returns (BlockHeader memory);
 }
+
+interface IGov {
+      function updateConfirmations(uint256 confirmations, bytes calldata confirmedBlocks) external;
+}

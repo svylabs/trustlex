@@ -2,11 +2,11 @@
 pragma solidity >=0.4.22 <0.9.0;
 import {SafeMath} from "./SafeMath.sol";
 import {ERC20} from "./ERC20.sol";
-import {ISPVChain, BlockHeader} from "./ISPVChain.sol";
+import {ISPVChain, BlockHeader, IGov} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
 
 
-contract BitcoinSPVChain is ERC20, ISPVChain {
+contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
   using SafeMath for uint256;
 
@@ -19,14 +19,20 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   /** Number of blocks needed on top of an existing block for confirmation of a certain block */
   uint256 public CONFIRMATIONS = 6;
 
+  /** Number of blocks needed on top of an existing block for confirmation of a certain block */
+  uint256 public MIN_CONFIRMATIONS = 6;
+
   /** Deletes all prior blocks */
   uint256 public BLOCKS_TO_STORE = 144 * 60; // Store two months of data in contract
   
   /** This is needed when doing the difficulty adjustment for the first time and is set by constructor */
   uint32 public initialEpochTime;
 
-  /** Total number of blocks confirmed by the contract */
-  uint256 private confirmedBlocks = 0;
+  /** Latest confirmed block height */
+  uint256 public confirmedBlockHeight = 0;
+
+  /** First block height */
+  uint256 public initialConfirmedBlockHeight = 0;
 
   /** Current reward for submitting the blocks */
   uint256 public currentReward = 50 * (10 ** decimals());
@@ -36,6 +42,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
 
   /** Mapping of block height to block hash */
   mapping (uint256 => bytes32) public blockHeightToBlockHash;
+
+  /** Fork detected event */
+  event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
 
   constructor(bytes memory initialConfirmedBlockHeader, uint256 height, uint32 _initialEpochTime) {
       BlockHeader memory header = BlockHeader({
@@ -50,7 +59,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
       header.blockHeight = height;
       blocks[blockHash] = header;
       blockHeightToBlockHash[height] = blockHash;
+      confirmedBlockHeight = height;
       initialEpochTime = _initialEpochTime;
+      initialConfirmedBlockHeight = height;
   }
 
   /**
@@ -74,7 +85,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
        * Check if the block matches the difficulty target
        * Compute a new difficulty and verify if it's correct
    */
-  function _validateBlock(bytes32 blockHash, BlockHeader memory header, BlockHeader memory previousBlock) public returns (bool result) {
+  function _validateBlock(bytes32 blockHash, BlockHeader memory header, BlockHeader memory previousBlock) public view returns (bool result) {
     uint256 target = BitcoinUtils._nBitsToTarget(header.nBits);
     require(uint256(blockHash) < target); // Require blockHash < target
     uint256 epochStartBlockTime = 0;
@@ -106,22 +117,43 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   /**
      Confirm a block and allocate token to the submitter
    */
-  function _confirmBlock(BlockHeader memory header) private {
+  function _confirmBlock(BlockHeader memory header, bytes32 blockHash) private {
     bytes32 previousHeaderHash = header.previousHeaderHash;
-    for (uint256 height = header.blockHeight - 1; height > header.blockHeight - CONFIRMATIONS; height--) {
+    uint256 confirmationBlockHeight = header.blockHeight - CONFIRMATIONS;
+    for (uint256 height = header.blockHeight - 1; height > confirmationBlockHeight; height--) {
       previousHeaderHash = blocks[previousHeaderHash].previousHeaderHash;
       if (previousHeaderHash == 0x0) {
         break;
       }
     }
     // Validate if the block is not confirmed already
-    if (previousHeaderHash != 0x0 && blockHeightToBlockHash[header.blockHeight - CONFIRMATIONS] == 0x0) {
+    if (previousHeaderHash != 0x0 && blockHeightToBlockHash[confirmationBlockHeight] == 0x0) {
       // Set confirmed block height
-      blockHeightToBlockHash[header.blockHeight - CONFIRMATIONS] = previousHeaderHash;
-      confirmedBlocks++;
+      blockHeightToBlockHash[confirmationBlockHeight] = previousHeaderHash;
+      confirmedBlockHeight = header.blockHeight;
 
-      _allocateTokens(msg.sender);
+      _allocateTokens(msg.sender, 1);
+    } else if (blockHeightToBlockHash[confirmationBlockHeight] != 0x0) {
+      _forkDetected(confirmationBlockHeight, blockHash);
     }
+  }
+
+  /**
+     If a fork has been detected, 
+   */
+  function _forkDetected(uint256 height, bytes32 collidingBlockHash) private {
+      uint256 affectedBlocks = confirmedBlockHeight - height + 1;
+      for (uint256 _h = height; _h <= confirmedBlockHeight; _h++) {
+         blockHeightToBlockHash[_h] = 0x0;
+      }
+      if (affectedBlocks < CONFIRMATIONS) {
+        CONFIRMATIONS = CONFIRMATIONS * 2;
+      } else {
+        CONFIRMATIONS = (CONFIRMATIONS + affectedBlocks) * 2;
+      }
+      emit FORK_DETECTED(height, blockHeightToBlockHash[height], collidingBlockHash, CONFIRMATIONS);
+      // Higher rewards for notifying of forks
+      _allocateTokens(msg.sender, 10); 
   }
 
   /**
@@ -141,9 +173,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
   /**
       Allocate tokens to the beneficiary
    */
-  function _allocateTokens(address beneficiary) internal {
-      _mint(beneficiary, currentReward);
-      if (confirmedBlocks % REWARD_HALVING_TIME == 0 && currentReward > MIN_REWARD) {
+  function _allocateTokens(address beneficiary, uint256 factor) internal {
+      _mint(beneficiary, currentReward * factor);
+      if ((confirmedBlockHeight - initialConfirmedBlockHeight) % REWARD_HALVING_TIME == 0 && currentReward > MIN_REWARD) {
         currentReward = currentReward / 2;
         if (currentReward < MIN_REWARD) {
           currentReward = MIN_REWARD;
@@ -164,16 +196,16 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
     BlockHeader memory previousBlock = blocks[previousHeaderHash];
     header.blockHeight = previousBlock.blockHeight + 1;
 
-    // If the block is available
+    // If the block is not available
     if (previousBlock.time == 0) {
       return;
     }
 
-    require(_validateBlock(blockHash, header, previousBlock));
+    require(_validateBlock(blockHash,header, previousBlock));
     blocks[blockHash] = header;
 
     // Confirm the current - 6 block
-    _confirmBlock(header);
+    _confirmBlock(header, blockHash);
 
     // Clear earliest block data
     _clearBlock(header);
@@ -213,6 +245,19 @@ contract BitcoinSPVChain is ERC20, ISPVChain {
     */
     require((balanceOf(tx.origin) >= currentReward) || (blocks[blockHash].submitter == tx.origin));
     return blocks[blockHash];
+  }
+
+  /**
+      Governance action to reduce the confirmations and set the confirmed blocks
+   */
+  function updateConfirmations(uint256 confirmations, bytes calldata confirmedBlocks) external override {
+    require(balanceOf(msg.sender) > (totalSupply() / 2), "Governance quorum not met");
+    // process confirmedBlocks and update blocks at the specified height
+    if (confirmations >= MIN_CONFIRMATIONS) {
+      CONFIRMATIONS = confirmations;
+    } else {
+      CONFIRMATIONS = MIN_CONFIRMATIONS;
+    }
   }
 
 }
