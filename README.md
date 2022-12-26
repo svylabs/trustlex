@@ -10,7 +10,7 @@ There are two smart contracts
  - Step 3: The Bitcoin holder posts merkle proof of transfer to the swap contract and withdraws ETH if the block has been confirmed and the transaction is included in the block to withdraw ETH from contract.
 
 # Tokenomics
-**BitcoinSPVChain contract** mints and allocates **SPVC** tokens to the block submitter. This is done to incentivise block submission to the contract. The token is used as a pass by users of the swap contracts. The users of swap contract can either submit blocks to gain tokens to be used during swap process or they can purchase the tokens from the market.
+**BitcoinSPVChain contract** mints and allocates **SPVC** tokens to the block submitter. This is done to incentivise block submission to the contract. The token is used as a pass by users of the swap contracts. The users of swap contract can either submit blocks to gain tokens to be used during swap process or they can acquire tokens from an existing holder.
 
 Initial reward starts at 50 SPVC per block, and each month the reward reduces by half, until the contract issues 0.01 SPVC per block, and subsequently there is no halving and the contract issues 0.01 SPVC perpetually to every new block confirmed. Initially the reward is higher to encourage submission of new Bitcoin blocks to the contract, subsequently if there are many users of the swap contract, the assumption is that at least one person wanting to swap will submit the new blocks.
 
