@@ -4,7 +4,7 @@ Trustlex is a decentralized cross chain, non-custodial Bitcoin exchange protocol
 # How it works
 There are two smart contracts 
 1. **BitcoinSPVChain contract** is an incentivised contract where any user can submit new Bitcoin block headers in return for **SPVC** tokens. For more details on **SPVC** tokens see the [Tokenomics section](#Tokenomics)
-2. **Swap contract** are deployed per asset pair (eg: BTC-ETH) and serves as an order book. 
+2. **Swap contract** is deployed per asset pair (eg: BTC-ETH) and serves as an order book. 
  - Step 1: A ETH holder can post their order(eg: Sell 100 ETH for 10 BTC) and also provide their BTC address to the contract. 
  - Step 2: A Bitcoin holder wanting to swap Bitcoin for Ethereum can send Bitcoins to the specified address by the user
  - Step 3: The Bitcoin holder posts merkle proof of transfer to the swap contract and withdraws ETH if the block has been confirmed and the transaction is included in the block to withdraw ETH from contract.
