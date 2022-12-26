@@ -48,6 +48,7 @@ fs.readFile('./test/files/difficulty_change_test.csv', 'utf8', (err, data) => {
                 spvchain.link(await SafeMath.deployed());
                 this.bitcoinSPVChain = await spvchain.new(parts[0], parseInt(parts[1]), parseInt(parts[2]), txParams);
                 const res = await this.bitcoinSPVChain.submitBlock(parts[3], txParams);
+                //console.log(res);
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[4], txParams);
                 assert.equal(header.blockHeight, parseInt(parts[1]) + 1, "Header height doesn't match");
                 assert.equal(header.merkleRootHash, parts[5], 'Transaction merkle root hash doesn\'t match');
@@ -80,7 +81,7 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                 } else {
                     console.log("Executing..." + i);
                     const res = await this.bitcoinSPVChain.submitBlock(parts[1], txParams);
-                    console.log(res);
+                    //console.log(res);
                 }
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[0], txParams);
                 assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
