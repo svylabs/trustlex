@@ -43,6 +43,17 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   /** Mapping of block height to block hash */
   mapping (uint256 => bytes32) public blockHeightToBlockHash;
 
+  /** Time when the fork was detected  */
+  uint256 public forkDetectedTime = 0;
+
+  /** Total number of affected blocks during fork */
+  uint256 public forkAffectedBlockCount = 0;
+
+  /** When was the last fork retarget time */
+  uint256 public forkRetargetTime = 0;
+
+  uint256 public FORK_RETARGET_TIME_PERIOD = 6 * 60 * 60;
+
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
 
@@ -133,25 +144,23 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       confirmedBlockHeight = header.blockHeight;
 
       _allocateTokens(msg.sender, 1);
-    } else if (blockHeightToBlockHash[confirmationBlockHeight] != 0x0) {
+    } else if (blockHeightToBlockHash[confirmationBlockHeight] != 0x0) { // TODO: Check this condition again
       _forkDetected(confirmationBlockHeight, blockHash);
     }
   }
 
   /**
-     If a fork has been detected, 
+     If a fork has been detected, reset the block hash for the confirmed block heights to 0x0
    */
   function _forkDetected(uint256 height, bytes32 collidingBlockHash) private {
       uint256 affectedBlocks = confirmedBlockHeight - height + 1;
       for (uint256 _h = height; _h <= confirmedBlockHeight; _h++) {
          blockHeightToBlockHash[_h] = 0x0;
       }
-      if (affectedBlocks < CONFIRMATIONS) {
-        CONFIRMATIONS = CONFIRMATIONS * 2;
-      } else {
-        CONFIRMATIONS = (CONFIRMATIONS + affectedBlocks) * 2;
-      }
+      CONFIRMATIONS = CONFIRMATIONS * 2 + affectedBlocks;
       emit FORK_DETECTED(height, blockHeightToBlockHash[height], collidingBlockHash, CONFIRMATIONS);
+      forkDetectedTime = block.timestamp;
+      forkAffectedBlockCount = affectedBlocks;
       // Higher rewards for notifying of forks
       _allocateTokens(msg.sender, 10); 
   }
@@ -184,6 +193,20 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   }
 
   /**
+   */
+  function _resetConfirmations(BlockHeader memory header, bytes32 currentBlockHash) private {
+      if ((block.timestamp - forkDetectedTime) >= FORK_RETARGET_TIME_PERIOD && (block.timestamp - forkRetargetTime) >= FORK_RETARGET_TIME_PERIOD) {
+          uint256 previousConfirmations = CONFIRMATIONS;
+          CONFIRMATIONS = (CONFIRMATIONS * 3) / 4;
+          if (CONFIRMATIONS < MIN_CONFIRMATIONS) {
+            CONFIRMATIONS = MIN_CONFIRMATIONS;
+          }
+          forkRetargetTime = block.timestamp;
+          // TODO: Confirm blocks from (height - previousConfirmations) to (height - CONFIRMATIONS)
+      }
+  }
+
+  /**
      submitBlock will be used by users to submit blocks to the contract
    */
   function submitBlock(bytes calldata blockHeader) external override {
@@ -209,6 +232,11 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
     // Clear earliest block data
     _clearBlock(header);
+
+    // Reset confirmations
+    if (CONFIRMATIONS > MIN_CONFIRMATIONS) {
+      _resetConfirmations(header, blockHash);
+    }
     
   }
 
