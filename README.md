@@ -42,7 +42,7 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 4. Trustlex
     * First attempt at incentivising those who submit Bitcoin block headers
     * Reasonable, but slightly higher gas consumption to submit block headers (which is 1 block every 10 minutes)
-    * Cheap verification.
+    * Cheap verification for smart contracts.
     * Handles reorganizations differently compared to Interlay and Summa-tx by increasing / decreasing the confirmations(initially set to 6) instead of leaving that to dapps. Dapps only have to use the confirmation value to see whether the funds have to be locked for an extended duration due to lag in confirmation.
     * Rewards those who submit
         * New Block headers (Rewards start at 50 SPVC per block header, reducing to 0.01 SPV per block header)

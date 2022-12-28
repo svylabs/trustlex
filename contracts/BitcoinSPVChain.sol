@@ -53,6 +53,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
   uint256 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
 
+  uint32 public checkpointedHeight = 0;
+
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
 
@@ -78,16 +80,16 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       initialConfirmedBlockHeight = height;
   }
 
-  function _parseCompactHeaderBytes(bytes32 compact) private pure returns (address _address, uint32 time, bytes4 nBits, uint32 height)  {
-      _address = address(uint160(uint256(compact >> (8 * 12))));
+  function _parseCompactHeaderBytes(bytes32 compact) private pure returns (address submitter, uint32 time, bytes4 nBits, uint32 height)  {
+      submitter = address(uint160(uint256(compact >> (8 * 12))));
       time = uint32(uint256(compact >> (8 * 8))) & 0xffffffff;
       nBits = bytes4(uint32(uint256(compact >> (8 * 4)) & 0xffffffff));
       height = uint32(uint256(compact) & 0xffffffff);
   }
 
-  function _makeCompactHeaderBytes(address _address, uint32 time, bytes4 nBits, uint32 height) private pure returns (uint256 compact) {
+  function _makeCompactHeaderBytes(address submitter, uint32 time, bytes4 nBits, uint32 height) private pure returns (uint256 compact) {
       compact = 0;
-      compact |= uint256(uint160(_address)) << (8 * 12);
+      compact |= uint256(uint160(submitter)) << (8 * 12);
       compact |= uint256(time) << (8 * 8);
       compact |= uint256(uint32(nBits)) << (8 * 4);
       compact |= uint256(height);
@@ -125,18 +127,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
        }
        uint256 newTarget = BitcoinUtils._retargetAlgorithm(BitcoinUtils._nBitsToTarget(_getBlockNBits(previousBlockCompactBytes)), epochStartBlockTime, _getBlockTime(previousBlockCompactBytes));
        require(bytes4(BitcoinUtils._targetToNBits(newTarget)) == nBits);
-       /*
-       emit LOG2(bytes4(BitcoinUtils._targetToNBits(newTarget)));
-       emit LOG2(header.nBits);
-       emit LOG1(bytes32(newTarget));
-       emit LOG(newTarget);
-       emit LOG(BitcoinUtils._nBitsToTarget(header.nBits));
-       emit LOG1(bytes32(header.nBits));
-       emit LOG1(bytes32(newTarget & BitcoinUtils._nBitsToTarget(header.nBits)));
-       emit LOG1(bytes32(uint256(BitcoinUtils._targetToNBits(newTarget))));
-       emit LOG1(bytes32(uint256(BitcoinUtils._targetToNBits(BitcoinUtils._nBitsToTarget(previousBlock.nBits)))));
-       emit LOG1(bytes32(previousBlock.nBits));
-       */
     }
     return true;
   }
@@ -147,11 +137,12 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   function _confirmBlock(bytes32 previousHeaderHash, uint32 blockHeight) private {
     bytes32 blockHashToConfirm = previousHeaderHash;
     uint256 confirmationBlockHeight = blockHeight - CONFIRMATIONS;
-    //emit LOG(bytes32(confirmationBlockHeight));
-    //emit LOG(bytes32(CONFIRMATIONS));
+
+    // Check if there is any checkpointed block height, block confirmation cannot happen for blockheight < checkpointed height
+    require(confirmationBlockHeight > checkpointedHeight);
+
     for (uint256 height = blockHeight - 1; height > confirmationBlockHeight; height--) {
       blockHashToConfirm = blocks[blockHashToConfirm].previousHeaderHash;
-      //emit LOG(blockHashToConfirm);
       if (blockHashToConfirm == 0x0) {
         break;
       }
@@ -348,6 +339,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     }
 
     uint32 currentBlockHeight = _getBlockHeight(blocks[currentBlockHash].compactBytes);
+    checkpointedHeight = currentBlockHeight;
 
     // Reset the confirmations and confirm the blocks based on the new block height
     // Reward 0.5% for executing the governance action
