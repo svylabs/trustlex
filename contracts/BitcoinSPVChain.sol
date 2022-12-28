@@ -53,7 +53,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
-  
+
   constructor(bytes memory initialConfirmedBlockHeader, uint32 height, uint32 _initialEpochTime) {
       uint32 time = BitcoinUtils._leToUint32(initialConfirmedBlockHeader, 68);
       bytes4 nBits = BitcoinUtils._leToBytes4(initialConfirmedBlockHeader, 72);
@@ -138,27 +138,32 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   /**
      Confirm a block and allocate token to the submitter
    */
-  function _confirmBlock(bytes32 previousHeaderHash, bytes32 blockHash, uint32 blockHeight) private {
+  function _confirmBlock(bytes32 previousHeaderHash, uint32 blockHeight) private {
     bytes32 blockHashToConfirm = previousHeaderHash;
     uint256 confirmationBlockHeight = blockHeight - CONFIRMATIONS;
+    //emit LOG(bytes32(confirmationBlockHeight));
+    //emit LOG(bytes32(CONFIRMATIONS));
     for (uint256 height = blockHeight - 1; height > confirmationBlockHeight; height--) {
       blockHashToConfirm = blocks[blockHashToConfirm].previousHeaderHash;
+      //emit LOG(blockHashToConfirm);
       if (blockHashToConfirm == 0x0) {
         break;
       }
     }
     uint256 blockCompactBytes = blocks[blockHashToConfirm].compactBytes;
-  
+
+    bytes32 existingConfirmedBlockHash = blockHeightToBlockHash[confirmationBlockHeight];
+    
     // Validate if the block is not confirmed already
-    if (blockCompactBytes != 0x0 && blockHeightToBlockHash[confirmationBlockHeight] == 0x0) {
+    if (blockCompactBytes != 0x0 && existingConfirmedBlockHash == 0x0) {
       // Set confirmed block height
       blockHeightToBlockHash[confirmationBlockHeight] = blockHashToConfirm;
       confirmedBlockHeight = confirmationBlockHeight;
       address submitter = _getBlockSubmitter(blockCompactBytes);
 
       _allocateTokens(submitter, 10 ** (CONFIRMATIONS / 10));
-    } else if (blockHeightToBlockHash[confirmationBlockHeight] != 0x0) { // TODO: Check this condition again
-      _forkDetected(confirmationBlockHeight, blockHash);
+    } else if (blockCompactBytes != 0x0 && existingConfirmedBlockHash != 0x0 && existingConfirmedBlockHash != blockHashToConfirm) { // TODO: Check this condition again
+      _forkDetected(confirmationBlockHeight, existingConfirmedBlockHash);
     }
   }
 
@@ -241,7 +246,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     blocks[blockHash] = header;
 
     // Confirm the current - 6 block
-    _confirmBlock(header.previousHeaderHash, blockHash, blockHeight);
+    _confirmBlock(header.previousHeaderHash, blockHeight);
 
     // Reset confirmations
     if (CONFIRMATIONS > MIN_CONFIRMATIONS) {
