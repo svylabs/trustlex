@@ -92,17 +92,12 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
    */
-  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes, uint32 height) public view returns (BlockHeader memory result, bytes32 blockHash) {
+  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) public pure 
+        returns (bytes32 merkleRootHash, uint32 time, bytes4 nBits, bytes32 blockHash) {
     require(blockHeaderBytes.length >= 80);
-    uint32 time = BitcoinUtils._leToUint32(blockHeaderBytes, 68);
-    bytes4 nBits = BitcoinUtils._leToBytes4(blockHeaderBytes, 72);
-    uint32 blockHeight = height;
-    address submitter = msg.sender;
-    result = BlockHeader({
-      previousHeaderHash: BitcoinUtils._leToBytes32(blockHeaderBytes, 4),
-      merkleRootHash: BitcoinUtils._leToBytes32(blockHeaderBytes, 36),
-      compactBytes: _makeCompactHeaderBytes(submitter, time, nBits, blockHeight)
-    });
+    time = BitcoinUtils._leToUint32(blockHeaderBytes, 68);
+    nBits = BitcoinUtils._leToBytes4(blockHeaderBytes, 72);
+    merkleRootHash = BitcoinUtils._leToBytes32(blockHeaderBytes, 36);
     blockHash = BitcoinUtils.swapEndian(sha256(abi.encodePacked(sha256(blockHeaderBytes[0: 80]))));
   }
 
@@ -111,16 +106,14 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
        * Check if the block matches the difficulty target
        * Compute a new difficulty and verify if it's correct
    */
-  function _validateBlock(bytes32 blockHash, BlockHeader memory header, uint256 previousBlockCompactBytes) public view returns (bool result) {
-    bytes4 nBits = _getBlockNBits(header);
+  function _validateBlock(bytes32 blockHash, bytes4 nBits, uint32 blockHeight, uint256 previousBlockCompactBytes) public view returns (bool result) {
     uint256 target = BitcoinUtils._nBitsToTarget(nBits);
     require(uint256(blockHash) < target); // Require blockHash < target
     uint256 epochStartBlockTime = 0;
-    uint32 blockHeight = _getBlockHeight(header);
     if (blockHeight % 2016 == 0) {
        bytes32 epochStartBlockHash = blockHeightToBlockHash[blockHeight - 2016];
        if (epochStartBlockHash != 0x0) {
-         epochStartBlockTime = _getBlockTime(blocks[epochStartBlockHash]);
+         epochStartBlockTime = _getBlockTime(blocks[epochStartBlockHash].compactBytes);
        } else {
          epochStartBlockTime = initialEpochTime;
        }
@@ -145,9 +138,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   /**
      Confirm a block and allocate token to the submitter
    */
-  function _confirmBlock(BlockHeader memory header, bytes32 blockHash) private {
-    bytes32 blockHashToConfirm = header.previousHeaderHash;
-    uint32 blockHeight = _getBlockHeight(header);
+  function _confirmBlock(bytes32 previousHeaderHash, bytes32 blockHash, uint32 blockHeight) private {
+    bytes32 blockHashToConfirm = previousHeaderHash;
     uint256 confirmationBlockHeight = blockHeight - CONFIRMATIONS;
     for (uint256 height = blockHeight - 1; height > confirmationBlockHeight; height--) {
       blockHashToConfirm = blocks[blockHashToConfirm].previousHeaderHash;
@@ -213,32 +205,16 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       }
   }
 
-  function _getBlockHeight(BlockHeader memory header) private pure returns (uint32) {
-     return uint32(uint256(header.compactBytes) & 0xffffffff);
-  }
-
   function _getBlockHeight(uint256 blockCompactBytes) private pure returns (uint32) {
      return uint32(blockCompactBytes & 0xffffffff);
-  }
-
-  function _getBlockNBits(BlockHeader memory header) private pure returns (bytes4) {
-    return bytes4(uint32((uint256(header.compactBytes) >> (8 * 4)) & 0xffffffff));
   }
 
   function _getBlockNBits(uint256 blockCompactBytes) private pure returns (bytes4) {
     return bytes4(uint32(blockCompactBytes >> (8 * 4)) & 0xffffffff);
   }
 
-  function _getBlockTime(BlockHeader memory header) private pure returns (uint32) {
-    return uint32((uint256(header.compactBytes) >> (8 * 8)) & 0xffffffff);
-  }
-
   function _getBlockTime(uint256 blockCompactBytes) private pure returns (uint32) {
     return uint32((blockCompactBytes >> (8 * 8)) & 0xffffffff);
-  }
-
-  function _getBlockSubmitter(BlockHeader memory header) private pure returns (address) {
-    return address(uint160(header.compactBytes >> (8 * 12)));
   }
 
   function _getBlockSubmitter(uint256 blockCompactBytes) private pure returns (address) {
@@ -251,16 +227,21 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   function submitBlock(bytes calldata blockHeader) external override {
     bytes32 previousHeaderHash = BitcoinUtils._leToBytes32(blockHeader, 4);
     uint256 previousBlockCompactBytes = blocks[previousHeaderHash].compactBytes;
+    uint32 blockHeight = _getBlockHeight(previousBlockCompactBytes) + 1;
     require (previousBlockCompactBytes != 0x0);
-    (BlockHeader memory header, bytes32 blockHash) = _parseBytesToBlockHeader(blockHeader, _getBlockHeight(previousBlockCompactBytes) + 1);
+    (bytes32 merkleRootHash, uint32 time, bytes4 nBits, bytes32 blockHash) = _parseBytesToBlockHeader(blockHeader);
     // Check if the block has not been submitted before
     require (blocks[blockHash].compactBytes == 0x0);
-
-    require(_validateBlock(blockHash, header, previousBlockCompactBytes));
+    BlockHeader memory header = BlockHeader({
+      previousHeaderHash: previousHeaderHash,
+      merkleRootHash: merkleRootHash,
+      compactBytes: _makeCompactHeaderBytes(msg.sender, time, nBits, blockHeight)
+    });
+    require(_validateBlock(blockHash, nBits, blockHeight, previousBlockCompactBytes));
     blocks[blockHash] = header;
 
     // Confirm the current - 6 block
-    _confirmBlock(header, blockHash);
+    _confirmBlock(header.previousHeaderHash, blockHash, blockHeight);
 
     // Reset confirmations
     if (CONFIRMATIONS > MIN_CONFIRMATIONS) {
@@ -291,7 +272,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
       to be able to use this function and not allow any arbitrary contract
     */
-     require((balanceOf(tx.origin) >= currentReward) || (_getBlockSubmitter(blocks[blockHeightToBlockHash[height]]) == tx.origin));
+     require((balanceOf(tx.origin) >= currentReward) || (_getBlockSubmitter(blocks[blockHeightToBlockHash[height]].compactBytes) == tx.origin));
      return blocks[blockHeightToBlockHash[height]];
   }
 
@@ -300,7 +281,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       Using tx.origin is NOT a bug. This is exactly what we want. We want only the holders of the token
       to be able to use this function and not allow any arbitrary contract
     */
-    require((balanceOf(tx.origin) >= currentReward) || (_getBlockSubmitter(blocks[blockHash]) == tx.origin));
+    require((balanceOf(tx.origin) >= currentReward) || (_getBlockSubmitter(blocks[blockHash].compactBytes) == tx.origin));
     return blocks[blockHash];
   }
 
