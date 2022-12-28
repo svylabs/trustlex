@@ -35,7 +35,7 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 3. Interlay
     * Used some elements of summa-tx and BTCRelay
     * No incentive for those who submit blocks.
-    * Dapps have to decide what is secure a confirmation.
+    * Dapps have to decide what is secure number of confirmations.
 4. Trustlex
     * First attempt at incentivising those who submit Bitcoin block headers
     * Reasonable, but slightly higher gas consumption to submit block headers (which is 1 block every 10 minutes)
