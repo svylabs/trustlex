@@ -41,7 +41,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   mapping (bytes32 => BlockHeader) private blocks;
 
   /** Mapping of block height to block hash */
-  mapping (uint256 => bytes32) public blockHeightToBlockHash;
+  mapping (uint256 => bytes32) private blockHeightToBlockHash;
 
   /** Time when the fork was detected  */
   uint256 public forkDetectedTime = 0;
@@ -53,6 +53,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
+
+  event BLOCK_SUBMITTED(bytes32 currentBlockHash, bytes32 previousBlockHash);
+
+  event BLOCK_CONFIRMED(bytes32 confirmedBlockHash);
 
   constructor(bytes memory initialConfirmedBlockHeader, uint32 height, uint32 _initialEpochTime) {
       uint32 time = BitcoinUtils._leToUint32(initialConfirmedBlockHeader, 68);
@@ -162,6 +166,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       address submitter = _getBlockSubmitter(blockCompactBytes);
 
       _allocateTokens(submitter, 10 ** (CONFIRMATIONS / 10));
+      emit BLOCK_CONFIRMED(blockHashToConfirm);
     } else if (blockCompactBytes != 0x0 && existingConfirmedBlockHash != 0x0 && existingConfirmedBlockHash != blockHashToConfirm) { // TODO: Check this condition again
       _forkDetected(confirmationBlockHeight, existingConfirmedBlockHash);
     }
@@ -176,10 +181,12 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       for (uint256 _h = height; _h <= confirmedBlockHeight; _h++) {
          blockHeightToBlockHash[_h] = 0x0;
       }
+      // Increase the confirmations required
       CONFIRMATIONS = (CONFIRMATIONS * 4 ) / 3 + affectedBlocks;
       emit FORK_DETECTED(height, blockHeightToBlockHash[height], collidingBlockHash, CONFIRMATIONS);
       forkDetectedTime = block.timestamp;
-      // Higher rewards for notifying of forks
+
+      // Higher rewards for users notifying the forks
       _allocateTokens(msg.sender, 15); 
   }
 
@@ -197,16 +204,44 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   }
 
   /**
+     Reset confirmations based on when was the last fork detected. This function does 3 things.
+     1. Updates the confirmations to the passed number
+     2. Sets the intermediary blocks to confirmed state
+     2. Updates the confirmation block height
    */
-  function _resetConfirmations(BlockHeader memory header, bytes32 currentBlockHash) private {
-      if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
+  function _resetConfirmations(uint256 newConfirmations, uint32 height, bytes32 currentBlockHash) private {
+      if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD 
+          && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
           uint256 previousConfirmations = CONFIRMATIONS;
-          CONFIRMATIONS = (CONFIRMATIONS * 3) / 4;
+
+          // Update confirmations to the new value
+          CONFIRMATIONS = newConfirmations;
           if (CONFIRMATIONS < MIN_CONFIRMATIONS) {
             CONFIRMATIONS = MIN_CONFIRMATIONS;
           }
+
+          // Update when the last confirmation retarget happened
           confirmationRetargetTimestamp = block.timestamp;
-          // TODO: Confirm blocks from (height - previousConfirmations) to (height - CONFIRMATIONS)
+          
+          bytes32 blockHashToConfirm = currentBlockHash;
+          uint256 blockHeight = height;
+          uint256 heightToConfirm = blockHeight - CONFIRMATIONS;
+          // Update the blocks to confirmed
+          for (uint256 _height = blockHeight; _height >= (blockHeight - previousConfirmations); _height--) {
+            if (height <= heightToConfirm) {
+                // Confirm blocks
+                blockHeightToBlockHash[height] = blockHashToConfirm;
+                emit BLOCK_CONFIRMED(blockHashToConfirm);
+            }
+            blockHashToConfirm = blocks[blockHashToConfirm].previousHeaderHash;
+            if (blockHashToConfirm == 0x0) {
+              break;
+            }
+          }
+
+          // Update the confirmed BlockHeight
+          confirmedBlockHeight = heightToConfirm;
+          
       }
   }
 
@@ -244,13 +279,15 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     });
     require(_validateBlock(blockHash, nBits, blockHeight, previousBlockCompactBytes));
     blocks[blockHash] = header;
+    emit BLOCK_SUBMITTED(blockHash, previousHeaderHash);
 
     // Confirm the current - 6 block
     _confirmBlock(header.previousHeaderHash, blockHeight);
 
     // Reset confirmations
     if (CONFIRMATIONS > MIN_CONFIRMATIONS) {
-      _resetConfirmations(header, blockHash);
+      uint256 newConfirmations = (CONFIRMATIONS * 3) / 4;
+      _resetConfirmations(newConfirmations, blockHeight, blockHash);
     }
     
   }
@@ -291,16 +328,26 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   }
 
   /**
-      Governance action to reduce the confirmations and set the confirmed blocks
+      Governance action to reduce the confirmations and set the confirmed blocks.
+
+      This can be executed once every CONFIRMATION RETARGET WINDOW which is currently set to 8 hours.
    */
-  function updateConfirmations(uint256 confirmations, bytes calldata confirmedBlocks) external override {
+  function updateConfirmations(uint256 confirmations, bytes32 currentBlockHash) external override {
     require(balanceOf(msg.sender) > (totalSupply() / 2), "Governance quorum not met");
     // process confirmedBlocks and update blocks at the specified height
-    if (confirmations >= MIN_CONFIRMATIONS) {
+    if (confirmations > MIN_CONFIRMATIONS) {
       CONFIRMATIONS = confirmations;
     } else {
       CONFIRMATIONS = MIN_CONFIRMATIONS;
     }
+
+    uint32 currentBlockHeight = _getBlockHeight(blocks[currentBlockHash].compactBytes);
+
+    // Reset the confirmations and confirm the blocks based on the new block height
+    _resetConfirmations(CONFIRMATIONS, currentBlockHeight, currentBlockHash);
+
+    // Inflate the tokens by 0.5% and allocate to the sender of the contract for executing a governance proposal
+    _mint(msg.sender, totalSupply() / 200);
   }
 
 }

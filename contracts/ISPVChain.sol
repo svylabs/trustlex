@@ -15,5 +15,5 @@ interface ISPVChain {
 }
 
 interface IGov {
-      function updateConfirmations(uint256 confirmations, bytes calldata confirmedBlocks) external;
+      function updateConfirmations(uint256 confirmations, bytes32 currentBlockHash) external;
 }

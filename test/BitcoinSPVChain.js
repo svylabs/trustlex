@@ -81,14 +81,10 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                     this.bitcoinSPVChain = await spvchain.new(parts[1], parseInt(parts[2]), 1630333672, txParams);
                 } else {
                     console.log("Executing..." + i);
-                    if (i > 8) {
-                        txParams.from = user2;
-                        console.log(txParams);
-                    }
                     const res = await this.bitcoinSPVChain.submitBlock(parts[1], txParams);
                     console.log(res.receipt.gasUsed, res.receipt.logs.length);
                     //console.log(res.receipt.logs[1]);
-                    console.log(res.receipt.logs[0]);
+                    //console.log(res.receipt.logs[0]);
                 }
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[0], txParams);
                 //assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
