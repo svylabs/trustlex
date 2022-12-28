@@ -43,5 +43,5 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
     * Handles reorganizations differently compared to Interlay and Summa-tx by increasing / decreasing the confirmations(initially set to 6) instead of leaving that to dapps. Dapps only have to use the confirmation value to see whether the funds have to be locked for an extended duration due to lag in confirmation.
     * Rewards those who submit
         * New Block headers (Rewards start at 50 SPVC per block header, reducing to 0.01 SPV per block header)
-        * Who submit forks (Rewards 15x of the current reward)
-        * Who attempt to resolve confirmations through Governance action (0.5% supply is inflated and allocated to the contract that governed the update)
+        * forks (Rewards 15x of the current reward)
+        * Governance action to resolve confirmations (0.5% supply is inflated and allocated to the contract that governed the update)
