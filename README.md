@@ -20,5 +20,28 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 - If there are block reorgs happening inside the confirmation window of 6 blocks, the contract handles it gracefully.
 - If there are block reorgs happening after a block has been confirmed, the contract increases the time to confirm a block. Subsequently when the fork has resolved, the confirmation time is decreased by the contract. The minimum number of confirmations set by the contract is 6. The dapp using the contract should take into account the number of confirmations to enable / disable fund locking mechanism. The contract also rewards 20 times the current reward for users notifying of any forks.
 
-## HardForks
+## Hardforks
 - The contract doesn't currently handle hardforks. The proposed solution is to fork a new Relay contract by the token holders.
+
+
+# Previous work on Bitcoin SPV on Ethereum and how trustlex is different
+1. BTCRelay
+    * First attempt at implementing a SPV relay for Bitcoin
+    * Implemented using Vyper
+    * Didn't have an incentive model for those who submit blocks
+2. Summa-tx
+    * Implemented SPV based swaps
+    * High verification cost due to not having all the Bitcoin headers.
+3. Interlay
+    * Used some elements of summa-tx and BTCRelay
+    * No incentive for those who submit blocks.
+    * Dapps have to decide what is secure a confirmation.
+4. Trustlex
+    * First attempt at incentivising those who submit Bitcoin block headers
+    * Reasonable, but slightly higher gas consumption to submit block headers (which is 1 block every 10 minutes)
+    * Cheap verification.
+    * Handles reorganizations differently compared to Interlay and Summa-tx by increasing / decreasing the confirmations(initially set to 6) instead of leaving that to dapps. Dapps only have to use the confirmation value to see whether the funds have to be locked for an extended duration due to lag in confirmation.
+    * Rewards those who submit
+        * New Block headers (Rewards start at 50 SPVC per block header, reducing to 0.01 SPV per block header)
+        * Who submit forks (Rewards 15x of the current reward)
+        * Who attempt to resolve confirmations through Governance action (0.5% supply is inflated and allocated to the contract that governed the update)

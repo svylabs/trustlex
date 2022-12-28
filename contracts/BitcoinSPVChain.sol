@@ -51,6 +51,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
   uint256 public CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
 
+  uint256 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
+
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
 
@@ -187,7 +189,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       forkDetectedTime = block.timestamp;
 
       // Higher rewards for users notifying the forks
-      _allocateTokens(msg.sender, 15); 
+      _allocateTokens(msg.sender, FORK_DETECTION_RESOLUTION_REWARD_FACTOR); 
   }
 
   /**
@@ -207,9 +209,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
      Reset confirmations based on when was the last fork detected. This function does 3 things.
      1. Updates the confirmations to the passed number
      2. Sets the intermediary blocks to confirmed state
-     2. Updates the confirmation block height
+     3. Updates the confirmation block height
+     4. Rewards users
    */
-  function _resetConfirmations(uint256 newConfirmations, uint32 height, bytes32 currentBlockHash) private {
+  function _resetConfirmations(uint256 newConfirmations, uint32 height, bytes32 currentBlockHash, uint256 reward) private {
       if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD 
           && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
           uint256 previousConfirmations = CONFIRMATIONS;
@@ -241,7 +244,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
 
           // Update the confirmed BlockHeight
           confirmedBlockHeight = heightToConfirm;
-          
+
+          _mint(msg.sender, reward);
+      
       }
   }
 
@@ -287,7 +292,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     // Reset confirmations
     if (CONFIRMATIONS > MIN_CONFIRMATIONS) {
       uint256 newConfirmations = (CONFIRMATIONS * 3) / 4;
-      _resetConfirmations(newConfirmations, blockHeight, blockHash);
+      uint256 reward = currentReward * FORK_DETECTION_RESOLUTION_REWARD_FACTOR;
+      _resetConfirmations(newConfirmations, blockHeight, blockHash, reward);
     }
     
   }
@@ -344,10 +350,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     uint32 currentBlockHeight = _getBlockHeight(blocks[currentBlockHash].compactBytes);
 
     // Reset the confirmations and confirm the blocks based on the new block height
-    _resetConfirmations(CONFIRMATIONS, currentBlockHeight, currentBlockHash);
+    // Reward 0.5% for executing the governance action
+    uint256 reward = (totalSupply() / 200);
+    _resetConfirmations(CONFIRMATIONS, currentBlockHeight, currentBlockHash, reward);
 
-    // Inflate the tokens by 0.5% and allocate to the sender of the contract for executing a governance proposal
-    _mint(msg.sender, totalSupply() / 200);
   }
 
 }
