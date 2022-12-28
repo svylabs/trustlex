@@ -33,7 +33,7 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 2. Summa-tx
     * Implemented SPV based swaps
     * High verification cost due to not having all the Bitcoin headers.
-    * P2P swaps using stateless SPV. Suitable for P2P swaps, but not suitable for smart contracts that manages the order books.
+    * P2P swaps using stateless SPV
 3. Interlay
     * Used some elements of summa-tx and BTCRelay
     * No incentive for those who submit blocks.
