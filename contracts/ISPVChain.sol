@@ -4,10 +4,7 @@ pragma solidity >=0.4.22 <0.9.0;
 struct BlockHeader {
         bytes32 previousHeaderHash;
         bytes32 merkleRootHash;
-        uint256 blockHeight;
-        address submitter;
-        uint32 time;
-        bytes4 nBits;
+        uint256 compactBytes;
 }
 
 interface ISPVChain {
