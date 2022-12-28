@@ -214,8 +214,6 @@ contract ERC20 is IERC20 {
     function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "ERC20: mint to the zero address");
 
-        _beforeTokenTransfer(address(0), account, amount);
-
         _totalSupply += amount;
         unchecked {
             // Overflow not possible: balance + amount is at most totalSupply + amount, which is checked above.
@@ -223,7 +221,6 @@ contract ERC20 is IERC20 {
         }
         emit Transfer(address(0), account, amount);
 
-        _afterTokenTransfer(address(0), account, amount);
     }
 
     /**
