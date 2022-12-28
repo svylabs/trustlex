@@ -28,14 +28,17 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 1. BTCRelay
     * First attempt at implementing a SPV relay for Bitcoin
     * Implemented using Vyper
-    * Didn't have an incentive model for those who submit blocks
+    * Didn't have an incentive model for those who submit blocks.
+    * Abandoned project
 2. Summa-tx
     * Implemented SPV based swaps
     * High verification cost due to not having all the Bitcoin headers.
+    * P2P swaps using stateless SPV. Suitable for P2P swaps, but not suitable for smart contracts that manages the order books.
 3. Interlay
     * Used some elements of summa-tx and BTCRelay
     * No incentive for those who submit blocks.
     * Dapps have to decide what is secure number of confirmations.
+    * SPV project is abandoned and the team is working on their own chain for Bitcoin DeFi.
 4. Trustlex
     * First attempt at incentivising those who submit Bitcoin block headers
     * Reasonable, but slightly higher gas consumption to submit block headers (which is 1 block every 10 minutes)
