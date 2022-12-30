@@ -37,6 +37,7 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
     * To avoid reorgs the relay maintainer has to explicity checkpoint through `markNewHeaviest` function whereas on trustlex the reorgs are one automatically by increasing / decreasing confirmations.
     * TBTC system is currently using [StatelessSPV](https://github.com/keep-network/tbtc/blob/main/solidity/contracts/deposit/DepositUtils.sol#L146) and not OnDemandSPV.
     * The [OnDemandSPV contract](https://etherscan.io/address/0x1531b6e3d51bf80f634957df81a990b92da4b154/advanced#readContract) does have the block headers for the past two years, but the contract doesn't expose public methods to verify transaction inclusion proof, so has limited utility. It does have an event driven approach where indexers can provide proof of a transaction and that will be relayed, but this still needs to be tested for gas efficiency as no one is using this contract yet as the TBTC system is using Stateless SPV proof.
+    * TBTC-v2 are working on a Light version of their relay(https://github.com/keep-network/tbtc-v2/tree/main/solidity/contracts/relay). There is scope for collaboration here with them
 3. Interlay
     * Used some elements of summa-tx and BTCRelay
     * No incentive for those who submit blocks.
