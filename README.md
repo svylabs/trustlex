@@ -30,10 +30,11 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
     * Implemented using Vyper
     * Didn't have an incentive model for those who submit blocks.
     * Abandoned project
-2. Summa-tx
-    * Implemented SPV based swaps
-    * High verification cost due to not having all the Bitcoin headers.
-    * P2P swaps using stateless SPV
+2. Summa-tx / tBTC OnDemandSPV
+    * Implemented SPV based swaps (Summatx)
+    * tBTC has a relay contract operational for the past two years(https://etherscan.io/txs?a=0x1531b6e3d51bf80f634957df81a990b92da4b154&ps=100&p=6)
+    * There is only one user maintaining the relay. This is because there is no incentive for anyone to submit the block headers to the contract.
+    * To avoid reorgs the relay maintainer has to explicity checkpoint through `markNewHeaviest` function whereas on trustlex the reorgs are one automatically by increasing / decreasing confirmations.
 3. Interlay
     * Used some elements of summa-tx and BTCRelay
     * No incentive for those who submit blocks.
@@ -45,6 +46,6 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
     * Cheap verification for smart contracts.
     * Handles reorganizations differently compared to Interlay and Summa-tx by increasing / decreasing the confirmations(initially set to 6) instead of leaving that to dapps. Dapps only have to use the confirmation value to see whether the funds have to be locked for an extended duration due to lag in confirmation.
     * Rewards those who submit
-        * New Block headers (Rewards start at 50 SPVC per block header, reducing to 0.01 SPV per block header)
-        * forks (Rewards 15x of the current reward)
+        * New block headers (Rewards start at 50 SPVC per block header, reducing to 0.01 SPV per block header)
+        * Forks (Rewards 15x of the current reward)
         * Governance action to resolve confirmations (0.5% supply is inflated and allocated to the contract that governed the update)
