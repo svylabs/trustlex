@@ -25,7 +25,7 @@ Initial reward starts at 50 SPVC per block, and each month the reward reduces by
 
 
 # Previous work on Bitcoin SPV on Ethereum and how trustlex is different
-1. BTCRelay
+1. BTCRelay (https://etherscan.io/address/0x41f274c0023f83391de4e0733c609df5a124c3d4)
     * First attempt at implementing a SPV relay for Bitcoin
     * Implemented using Vyper
     * Didn't have an incentive model for those who submit blocks.
