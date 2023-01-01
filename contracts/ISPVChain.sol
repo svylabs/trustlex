@@ -12,6 +12,7 @@ interface ISPVChain {
       function getTxMerkleRootAtHeight(uint256 height) external view returns (bytes32);
       function getBlockHeader(uint256 height) external view returns (BlockHeader memory);
       function getBlockHeader(bytes32 blockHash) external view returns (BlockHeader memory);
+      function verifyTxInclusionProof(bytes32 txId, uint32 height, bytes calldata flags, bytes32[] calldata hashes) external view returns (bool result);
 }
 
 interface IGov {
