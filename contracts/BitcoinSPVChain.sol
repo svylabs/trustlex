@@ -95,7 +95,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       compact |= uint256(height);
       return compact;
   }
-      
+
+  function sha256d(bytes memory bz) internal pure returns (bytes32) {
+    return sha256(abi.encodePacked(sha256(bz)));
+  }
 
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
@@ -325,7 +328,18 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
   }
 
   function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
-      
+      bytes32 root = txId;
+      uint256 len = (hashes.length / 32);
+      for (uint256 i = 0; i < len; i++) {
+        bytes32 _h = bytes32(hashes[i * 32: (i + 1) * 32]);
+        if (index & 1 == 1) {
+          _h = sha256d(abi.encodePacked(_h, root));
+        } else {
+          _h = sha256d(abi.encodePacked(root, _h));
+        }
+        index = index >> 1;
+      }
+      return (root == blocks[blockHeightToBlockHash[blockHeight]].merkleRootHash);
   }
 
   /**
