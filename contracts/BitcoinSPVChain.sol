@@ -96,10 +96,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
       return compact;
   }
 
-  function sha256d(bytes memory bz) internal pure returns (bytes32) {
-    return sha256(abi.encodePacked(sha256(bz)));
-  }
-
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
    */
@@ -327,19 +323,33 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     return blocks[blockHash];
   }
 
-  function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
+  function sha256d(bytes32 data1, bytes32 data2) internal view returns (bytes32 result) {
+        assembly {
+            let ptr := mload(0x40)
+            mstore(ptr, data1)
+            mstore(add(ptr, 0x20), data2)
+            pop(staticcall(gas(), 2, ptr, 0x40, ptr, 0x20))
+            pop(staticcall(gas(), 2, ptr, 0x20, ptr, 0x20))
+            result := mload(ptr)
+        }
+  }
+
+  function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external returns (bool result) {
+      bytes32 blockHash = blockHeightToBlockHash[blockHeight];
+      require((balanceOf(tx.origin) >= currentReward) || (_getBlockSubmitter(blocks[blockHash].compactBytes) == tx.origin));
       bytes32 root = txId;
       uint256 len = (hashes.length / 32);
+      bytes32 _h;
       for (uint256 i = 0; i < len; i++) {
-        bytes32 _h = bytes32(hashes[i * 32: (i + 1) * 32]);
+         _h = bytes32(hashes[i * 32: (i + 1) * 32]);
         if (index & 1 == 1) {
-          _h = sha256d(abi.encodePacked(_h, root));
+          root = sha256d(_h, root);
         } else {
-          _h = sha256d(abi.encodePacked(root, _h));
+          root = sha256d(root, _h);
         }
         index = index >> 1;
       }
-      return (root == blocks[blockHeightToBlockHash[blockHeight]].merkleRootHash);
+      return (BitcoinUtils.swapEndian(root) == blocks[blockHash].merkleRootHash);
   }
 
   /**

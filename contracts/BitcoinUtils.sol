@@ -57,24 +57,10 @@ library BitcoinUtils {
 
     result = bytes32(bz[startIndex: startIndex+32]);
 
-    // swap bytes
-    result = ((result >> 8) & 0x00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF) |
-            ((result & 0x00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF) << 8);
-    // swap 2-byte long pairs
-    result = ((result >> 16) & 0x0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF) |
-            ((result & 0x0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF) << 16);
-    // swap 4-byte long pairs
-    result = ((result >> 32) & 0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF) |
-            ((result & 0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF) << 32);
-    // swap 8-byte long pairs
-    result = ((result >> 64) & 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) |
-            ((result & 0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF) << 64);
-    // swap 16-byte long pairs
-    result = (result >> 128) | (result << 128);
-    return result;
+    result = swapEndian(result);
   }
 
-  function swapEndian(bytes32 bz) pure public returns (bytes32 result) {
+  function swapEndian(bytes32 bz) pure internal returns (bytes32 result) {
 
     result = bz;
 
