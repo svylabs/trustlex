@@ -19,7 +19,7 @@ contract("BitcoinSPVChain: Happy Case", (accounts) => {
         const header = await this.bitcoinSPVChain.getBlockHeader.call('0x00000000000000000005e5ddf901baa6810c88926d55f21d0fee8969cf3447c1', txParams);
         ///assert.equal(header.blockHeight, 758016, "Header height doesn't match");
         assert.equal(header.previousHeaderHash, '0x0000000000000000000009f301f2215237cab791aedc296f102fd7b9dfbff456', 'Previous header hash doesn\'t match');
-        //assert.equal(header.merkleRootHash, '0x50a2db52fd8ca5acc316cf6f9cbe66ec6fb9a68f5a2a526450d86f9832aff423', 'Transaction merkle root hash doesn\'t match');
+        assert.equal(header.merkleRootHash, '0x50a2db52fd8ca5acc316cf6f9cbe66ec6fb9a68f5a2a526450d86f9832aff423', 'Transaction merkle root hash doesn\'t match');
         //assert.equal(header.nBits, '0x1707e772', 'difficulty bits doesn\'t match');
     });
 })
@@ -52,7 +52,7 @@ fs.readFile('./test/files/difficulty_change_test.csv', 'utf8', (err, data) => {
                 console.log(res.receipt.gasUsed);
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[4], txParams);
                 //assert.equal(header.blockHeight, parseInt(parts[1]) + 1, "Header height doesn't match");
-                //assert.equal(header.merkleRootHash, parts[5], 'Transaction merkle root hash doesn\'t match');
+                assert.equal(header.merkleRootHash, parts[5], 'Transaction merkle root hash doesn\'t match');
                 assert.equal(header.previousHeaderHash, parts[6], 'Previous header hash doesn\'t match');
             });
         });
@@ -89,7 +89,7 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                 }
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[0], txParams);
                 //assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
-                //assert.equal(header.merkleRootHash, parts[4], 'Transaction merkle root hash doesn\'t match');
+                assert.equal(header.merkleRootHash, parts[4], 'Transaction merkle root hash doesn\'t match');
                 assert.equal(header.previousHeaderHash, parts[5], 'Previous header hash doesn\'t match');
                 if (i == length) {
                     console.log("Calling verify...");
@@ -97,8 +97,8 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                     const index = 356;
                     const txId = '0x42d0ba6385728ad26b33a9437c83a71f1523c191eed469530399fcdc245a1583';
                     const height = 700003;
-                    const result = await this.bitcoinSPVChain.verifyTxInclusionProof(txId, height, index, proof, txParams);
-                    console.log(result.receipt);
+                    const result = await this.bitcoinSPVChain.verifyTxInclusionProof.call(txId, height, index, proof, txParams);
+                    assert.equal(result, true, "Unable to verify transaction");
                 }
 
             });
