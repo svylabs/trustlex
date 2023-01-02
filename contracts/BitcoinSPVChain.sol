@@ -324,7 +324,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
     return blocks[blockHash];
   }
 
-  function verifyTxInclusionProof(bytes32 txId, uint32 height, bytes calldata flags, bytes32[] calldata hashes) external view returns (bool result) {
+  function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
       
   }
 
