@@ -67,6 +67,7 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
         const lines = data.split("\n");
 
         const parts = lines[0].split(" ");
+        const length = lines.length - 2;
         
         lines.forEach((line, i) => {
             it ('submit block - ' + i, async function() {
@@ -90,6 +91,16 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                 //assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
                 assert.equal(header.merkleRootHash, parts[4], 'Transaction merkle root hash doesn\'t match');
                 assert.equal(header.previousHeaderHash, parts[5], 'Previous header hash doesn\'t match');
+                if (i == length) {
+                    console.log("Calling verify...");
+                    const proof = '0xaf3f74b55a1d7530f6a74fb535ad79745e2793df8a979fb419783b5d38cff538185a5059a2089612163550d45122e9fc85082f91f70e6770831b8289b400bbd7afb225a13dcf7cc769f8c2aa6345757f31a5ef35bf18c4342e04086f998c91832f168fef3dc665a5278f93d08f0905eb86c6986cc77af7efaee0b604b86e5f2ca93e29790b535c7c32405b480d0d1b3ef8c0f2c3262c009448938d050753a9221b0c214e6b2eeeb07ae41bc0aa48ed38331650661aa402828e3720023bce46ea4d24dbe4af14d7a00afae1155e2af465a9610b58abd23d45686478cf1d8057a5e84997241118e369865952734a5f35e9618759d74b553984b238f49be15f4180';
+                    const index = 356;
+                    const txId = '0x42d0ba6385728ad26b33a9437c83a71f1523c191eed469530399fcdc245a1583';
+                    const height = 700003;
+                    const result = await this.bitcoinSPVChain.verifyTxInclusionProof.call(txId, height, index, proof, txParams);
+                    assert.equal(result, true, "Unable to verify transaction");
+                }
+
             });
         });
         

@@ -14,6 +14,10 @@ interface ISPVChain {
       function getBlockHeader(bytes32 blockHash) external view returns (BlockHeader memory);
 }
 
+interface ITxVerifier {
+      function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result);
+}
+
 interface IGov {
       function updateConfirmations(uint256 confirmations, bytes32 currentBlockHash) external;
 }
