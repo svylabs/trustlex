@@ -2,11 +2,11 @@
 pragma solidity >=0.4.22 <0.9.0;
 import {SafeMath} from "./SafeMath.sol";
 import {ERC20} from "./ERC20.sol";
-import {ISPVChain, BlockHeader, IGov} from "./ISPVChain.sol";
+import {ISPVChain, ITxVerifier, BlockHeader, IGov} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
 
 
-contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
+contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   using SafeMath for uint256;
 
@@ -334,7 +334,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, IGov {
         }
   }
 
-  function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external returns (bool result) {
+  function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
       bytes32 blockHash = blockHeightToBlockHash[blockHeight];
       require((balanceOf(tx.origin) >= currentReward) || (_getBlockSubmitter(blocks[blockHash].compactBytes) == tx.origin));
       bytes32 root = txId;
