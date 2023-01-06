@@ -96,13 +96,13 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
    */
-  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) internal pure 
+  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) internal view 
         returns (bytes32 merkleRootHash, uint32 time, bytes4 nBits, bytes32 blockHash) {
     require(blockHeaderBytes.length >= 80);
     time = BitcoinUtils._leToUint32(blockHeaderBytes, 68);
     nBits = BitcoinUtils._leToBytes4(blockHeaderBytes, 72);
     merkleRootHash = BitcoinUtils._leToBytes32(blockHeaderBytes, 36);
-    blockHash = BitcoinUtils.swapEndian(sha256(abi.encodePacked(sha256(blockHeaderBytes[0: 80]))));
+    blockHash = BitcoinUtils.swapEndian(_sha256d(blockHeaderBytes));
   }
 
   /**
@@ -319,7 +319,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
     return blocks[blockHash];
   }
 
-  function sha256d(bytes32 data1, bytes32 data2) internal view returns (bytes32 result) {
+  function _sha256d(bytes32 data1, bytes32 data2) internal view returns (bytes32 result) {
         assembly {
             let ptr := mload(0x40)
             mstore(ptr, data1)
@@ -327,6 +327,17 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
             pop(staticcall(gas(), 2, ptr, 0x40, ptr, 0x20))
             pop(staticcall(gas(), 2, ptr, 0x20, ptr, 0x20))
             result := mload(ptr)
+        }
+  }
+
+  function _sha256d(bytes calldata bz) internal view returns (bytes32 result) {
+        assembly {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, bz.offset, 0x50)
+            let res := mload(0x40)
+            pop(staticcall(gas(), 2, ptr, 0x50, res, 0x20))
+            pop(staticcall(gas(), 2, res, 0x20, res, 0x20))
+            result := mload(res)
         }
   }
 
@@ -339,9 +350,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
       for (uint256 i = 0; i < len; i++) {
          _h = bytes32(hashes[i * 32: (i + 1) * 32]);
         if (index & 1 == 1) {
-          root = sha256d(_h, root);
+          root = _sha256d(_h, root);
         } else {
-          root = sha256d(root, _h);
+          root = _sha256d(root, _h);
         }
         index = index >> 1;
       }
