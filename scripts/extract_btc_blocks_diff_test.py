@@ -1,5 +1,6 @@
 import asyncio
 from bitcoinrpc import BitcoinRPC
+import sys
 
 async def getblock(rpc: BitcoinRPC, height):
     blockhash = await rpc.getblockhash(height)
@@ -8,7 +9,7 @@ async def getblock(rpc: BitcoinRPC, height):
     return (blockhash, block_header, block_header_detail)
 
 async def main():
-    async with BitcoinRPC("http://umbrel.local:8332", "umbrel", "iATsnG2w5yLkcAkyQT4s8r2ndCchB7D11urnVKa1ND8=") as rpc:
+    async with BitcoinRPC(sys.argv[1], sys.argv[2], sys.argv[3]) as rpc:
         for i in range(16, 382):
             start_block_nr = i * 2016 - 1
             first_block_nr = i * 2016 - 2016

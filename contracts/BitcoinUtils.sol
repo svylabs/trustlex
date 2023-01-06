@@ -9,8 +9,6 @@ library BitcoinUtils {
   /** Retarget period for Bitcoin Difficulty Adjustment */
   uint256 public constant RETARGET_PERIOD = 2 * 7 * 24 * 60 * 60;  // 2 weeks in seconds
 
-  uint256 public constant MAX_TARGET = 0x00000000FFFF0000000000000000000000000000000000000000000000000000;
-
     /**
      input: 0x...01020304....., 3
      output: 0x04030201
@@ -26,8 +24,6 @@ library BitcoinUtils {
          ((v & 0x0000FFFF) << 16);
 
     result = uint32(v);
-    
-    return result;
   }
 
   /**
@@ -81,13 +77,13 @@ library BitcoinUtils {
     return result;
   }
 
-  function _nBitsToTarget(bytes4 nBits) pure public returns (uint256 target) {
+  function _nBitsToTarget(bytes4 nBits) pure internal returns (uint256 target) {
     uint256 _mantissa = uint256(uint32(nBits) & 0x007fffff);
     uint256 _exponent = (uint256(uint32(nBits) & uint32(0xff000000)) >> 24).sub(3);
     return _mantissa.mul(256 ** _exponent);
   }
 
-  function _targetToNBits(uint256 target) pure public returns (uint32 compact) {
+  function _targetToNBits(uint256 target) pure internal returns (uint32 compact) {
      if (target == 0) {
         return 0;
      }

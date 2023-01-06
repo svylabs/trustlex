@@ -28,6 +28,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   /** This is needed when doing the difficulty adjustment for the first time and is set by constructor */
   uint32 public initialEpochTime;
 
+  uint32 public checkpointedHeight = 0;
+
   /** Latest confirmed block height */
   uint256 public confirmedBlockHeight = 0;
 
@@ -52,8 +54,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   uint256 public CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
 
   uint256 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
-
-  uint32 public checkpointedHeight = 0;
 
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
@@ -99,7 +99,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   /**
      Parses BlockHeader given as bytes and returns a struct BlockHeader
    */
-  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) public pure 
+  function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) internal pure 
         returns (bytes32 merkleRootHash, uint32 time, bytes4 nBits, bytes32 blockHash) {
     require(blockHeaderBytes.length >= 80);
     time = BitcoinUtils._leToUint32(blockHeaderBytes, 68);
@@ -113,7 +113,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
        * Check if the block matches the difficulty target
        * Compute a new difficulty and verify if it's correct
    */
-  function _validateBlock(bytes32 blockHash, bytes4 nBits, uint32 blockHeight, uint256 previousBlockCompactBytes) public view returns (bool result) {
+  function _validateBlock(bytes32 blockHash, bytes4 nBits, uint32 blockHeight, uint256 previousBlockCompactBytes) internal view returns (bool result) {
     uint256 target = BitcoinUtils._nBitsToTarget(nBits);
     require(uint256(blockHash) < target); // Require blockHash < target
     uint256 epochStartBlockTime = 0;
@@ -133,7 +133,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   /**
      Confirm a block and allocate token to the submitter
    */
-  function _confirmBlock(bytes32 previousHeaderHash, uint32 blockHeight) private {
+  function _confirmBlock(bytes32 previousHeaderHash, uint32 blockHeight) internal {
     bytes32 blockHashToConfirm = previousHeaderHash;
     uint256 confirmationBlockHeight = blockHeight - CONFIRMATIONS;
 
@@ -168,7 +168,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
      If a fork has been detected, reset the block hash for the confirmed block heights to 0x0 and
      increase the number of confirmations
    */
-  function _forkDetected(uint256 height, bytes32 collidingBlockHash) private {
+  function _forkDetected(uint256 height, bytes32 collidingBlockHash) internal {
       uint256 affectedBlocks = confirmedBlockHeight - height + 1;
       for (uint256 _h = height; _h <= confirmedBlockHeight; _h++) {
          blockHeightToBlockHash[_h] = 0x0;
@@ -202,7 +202,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
      3. Updates the confirmation block height
      4. Rewards users
    */
-  function _resetConfirmations(uint256 newConfirmations, uint32 height, bytes32 currentBlockHash, uint256 reward) private {
+  function _resetConfirmations(uint256 newConfirmations, uint32 height, bytes32 currentBlockHash, uint256 reward) internal {
       if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD 
           && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
           uint256 previousConfirmations = CONFIRMATIONS;
