@@ -17,14 +17,11 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   uint256 public REWARD_HALVING_TIME = 144 * 30; // every 432 blocks
 
   /** Number of blocks needed on top of an existing block for confirmation of a certain block */
-  uint256 public CONFIRMATIONS = 6;
+  uint32 public CONFIRMATIONS = 6;
 
   /** Number of blocks needed on top of an existing block for confirmation of a certain block */
-  uint256 public MIN_CONFIRMATIONS = 6;
+  uint32 public MIN_CONFIRMATIONS = 6;
 
-  /** Deletes all prior blocks */
-  uint256 public BLOCKS_TO_STORE = 144 * 60; // Store two months of data in contract
-  
   /** This is needed when doing the difficulty adjustment for the first time and is set by constructor */
   uint32 public initialEpochTime;
 
@@ -169,7 +166,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
      increase the number of confirmations
    */
   function _forkDetected(uint256 height, bytes32 collidingBlockHash) internal {
-      uint256 affectedBlocks = confirmedBlockHeight - height + 1;
+      uint32 affectedBlocks = uint32(confirmedBlockHeight - height + 1);
       for (uint256 _h = height; _h <= confirmedBlockHeight; _h++) {
          blockHeightToBlockHash[_h] = 0x0;
       }
@@ -202,9 +199,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
      3. Updates the confirmation block height
      4. Rewards users
    */
-  function _resetConfirmations(uint256 newConfirmations, uint32 height, bytes32 currentBlockHash, uint256 reward) internal {
-      if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD 
-          && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
+  function _resetConfirmations(uint32 newConfirmations, uint32 height, bytes32 currentBlockHash, uint256 reward) internal {
           uint256 previousConfirmations = CONFIRMATIONS;
 
           // Update confirmations to the new value
@@ -236,8 +231,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
           confirmedBlockHeight = heightToConfirm;
 
           _mint(msg.sender, reward);
-      
-      }
   }
 
   function _getBlockHeight(uint256 blockCompactBytes) private pure returns (uint32) {
@@ -281,9 +274,12 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
     // Reset confirmations
     if (CONFIRMATIONS > MIN_CONFIRMATIONS) {
-      uint256 newConfirmations = (CONFIRMATIONS * 3) / 4;
-      uint256 reward = currentReward * FORK_DETECTION_RESOLUTION_REWARD_FACTOR;
-      _resetConfirmations(newConfirmations, blockHeight, blockHash, reward);
+      if ((block.timestamp - forkDetectedTime) >= CONFIRMATION_RETARGET_TIME_PERIOD 
+          && (block.timestamp - confirmationRetargetTimestamp) >= CONFIRMATION_RETARGET_TIME_PERIOD) {
+          uint32 newConfirmations = (CONFIRMATIONS * 3) / 4;
+          uint256 reward = currentReward * FORK_DETECTION_RESOLUTION_REWARD_FACTOR;
+          _resetConfirmations(newConfirmations, blockHeight, blockHash, reward);
+      }
     }
     
   }
@@ -357,7 +353,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
       This can be executed once every CONFIRMATION RETARGET WINDOW which is currently set to 8 hours.
    */
-  function updateConfirmations(uint256 confirmations, bytes32 currentBlockHash) external override {
+  function updateConfirmations(uint32 confirmations, bytes32 currentBlockHash) external override {
     require(balanceOf(msg.sender) > (totalSupply() / 2), "Governance quorum not met");
     // process confirmedBlocks and update blocks at the specified height
     if (confirmations > MIN_CONFIRMATIONS) {

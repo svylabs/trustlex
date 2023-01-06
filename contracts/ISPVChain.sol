@@ -19,5 +19,5 @@ interface ITxVerifier {
 }
 
 interface IGov {
-      function updateConfirmations(uint256 confirmations, bytes32 currentBlockHash) external;
+      function updateConfirmations(uint32 confirmations, bytes32 currentBlockHash) external;
 }
