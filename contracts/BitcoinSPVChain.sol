@@ -14,7 +14,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   uint256 public MIN_REWARD = 1 * (10 ** decimals()) / 100; // 0.01 SPVC
 
   /** Reward halving time for block submission */
-  uint256 public REWARD_HALVING_TIME = 144 * 30; // every 432 blocks
+  uint256 public REWARD_HALVING_TIME = 144 * 30; // every 4320 blocks
 
   /** Number of blocks needed on top of an existing block for confirmation of a certain block */
   uint32 public CONFIRMATIONS = 6;
@@ -33,6 +33,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   /** First block height */
   uint32 public initialConfirmedBlockHeight = 0;
 
+  uint32 public CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
+
+  uint32 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
+
   /** Current reward for submitting the blocks */
   uint256 public currentReward = 50 * (10 ** decimals());
 
@@ -47,11 +51,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   /** When was the last fork retarget time */
   uint256 public confirmationRetargetTimestamp = 0;
-
-  uint256 public CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
-
-  uint256 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
-
+  
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
 
@@ -85,7 +85,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
   }
 
   function _makeCompactHeaderBytes(address submitter, uint32 time, bytes4 nBits, uint32 height) private pure returns (uint256 compact) {
-      compact = 0;
       compact |= uint256(uint160(submitter)) << (8 * 12);
       compact |= uint256(time) << (8 * 8);
       compact |= uint256(uint32(nBits)) << (8 * 4);
@@ -98,7 +97,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
    */
   function _parseBytesToBlockHeader(bytes calldata blockHeaderBytes) internal view 
         returns (bytes32 merkleRootHash, uint32 time, bytes4 nBits, bytes32 blockHash) {
-    require(blockHeaderBytes.length >= 80);
+    require(blockHeaderBytes.length == 80);
     time = BitcoinUtils._leToUint32(blockHeaderBytes, 68);
     nBits = BitcoinUtils._leToBytes4(blockHeaderBytes, 72);
     merkleRootHash = BitcoinUtils._leToBytes32(blockHeaderBytes, 36);

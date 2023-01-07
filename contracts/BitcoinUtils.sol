@@ -148,4 +148,5 @@ library BitcoinUtils {
         uint256 _adjusted = _previousTarget.div(65536).mul(_elapsedTime);
         return _adjusted.div(RETARGET_PERIOD).mul(65536);
     }
+    
 }

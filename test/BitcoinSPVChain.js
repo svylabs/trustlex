@@ -98,11 +98,14 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                     const txId = '0x42d0ba6385728ad26b33a9437c83a71f1523c191eed469530399fcdc245a1583';
                     const height = 700003;
                     const result = await this.bitcoinSPVChain.verifyTxInclusionProof.call(txId, height, index, proof, txParams);
+                    console.log(result);
                     assert.equal(result, true, "Unable to verify transaction");
                 }
 
             });
         });
+
+        it("Test reward")
         
     });
 })
