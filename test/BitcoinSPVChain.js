@@ -64,10 +64,13 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
     contract("BitcoinSPVChain: Test confirmation", (accounts) => {
         const [owner, user1, user2] = accounts;
         const txParams = { from: owner };
+        const userTxParams = { from: user1 };
         const lines = data.split("\n");
 
         const parts = lines[0].split(" ");
         const length = lines.length - 2;
+        let ownerBalance = 0;
+        let user1Balance = 0;
         
         lines.forEach((line, i) => {
             it ('submit block - ' + i, async function() {
@@ -82,10 +85,20 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                     this.bitcoinSPVChain = await spvchain.new(parts[1], parseInt(parts[2]), 1630333672, txParams);
                 } else {
                     console.log("Executing..." + i);
+                    if (i > 24) {
+                        const res = await this.bitcoinSPVChain.submitBlock(parts[1], userTxParams);
+                        console.log(res.receipt.gasUsed, res.receipt.logs.length);
+                    } else {
                     const res = await this.bitcoinSPVChain.submitBlock(parts[1], txParams);
                     console.log(res.receipt.gasUsed, res.receipt.logs.length);
+                    }
                     //console.log(res.receipt.logs[1]);
                     //console.log(res.receipt.logs[0]);
+                }
+                if (i > 6 && i <= 30) {
+                    ownerBalance += 50;
+                } else if (i > 30) {
+                    user1Balance += 50;
                 }
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[0], txParams);
                 //assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
@@ -101,11 +114,14 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                     console.log(result);
                     assert.equal(result, true, "Unable to verify transaction");
                 }
-
+                // Checking rewards
+                const ownBal = await this.bitcoinSPVChain.balanceOf(owner);
+                const user1Bal = await this.bitcoinSPVChain.balanceOf(user1);
+                assert.equal(ownerBalance, ownBal / 100000000, `Owner balance ${ownBal} doesn't match ${ownerBalance} `);
+                assert.equal(user1Balance, user1Bal / 100000000, `User balance ${user1Bal} doesn't match ${user1Balance}`);
+                console.log(ownerBalance, ownBal, user1Balance, user1Bal);
             });
         });
-
-        it("Test reward")
         
     });
 })
