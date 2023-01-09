@@ -10,11 +10,14 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   using SafeMath for uint256;
 
+  /** Current reward for submitting the blocks */
+  uint64 public currentReward = uint64(50 * (10 ** decimals()));
+
   /** Minimum Reward to be paid by the contract for submitting blocks */
-  uint256 public MIN_REWARD = 1 * (10 ** decimals()) / 100; // 0.01 SPVC
+  uint64 public MIN_REWARD = uint64(1 * (10 ** (decimals() - 2))); // 0.01 SPVC
 
   /** Reward halving time for block submission */
-  uint256 public REWARD_HALVING_TIME = 144 * 30; // every 4320 blocks
+  uint32 public REWARD_HALVING_TIME = 144 * 30; // every 4320 blocks
 
   /** Number of blocks needed on top of an existing block for confirmation of a certain block */
   uint32 public CONFIRMATIONS = 6;
@@ -37,21 +40,18 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   uint32 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
 
-  /** Current reward for submitting the blocks */
-  uint256 public currentReward = 50 * (10 ** decimals());
+  /** Time when the fork was detected  */
+  uint32 public forkDetectedTime = 0;
 
+  /** When was the last fork retarget time */
+  uint32 public confirmationRetargetTimestamp = 0;
+  
   /** Block Headers  */
   mapping (bytes32 => BlockHeader) private blocks;
 
   /** Mapping of block height to block hash */
   mapping (uint256 => bytes32) private blockHeightToBlockHash;
 
-  /** Time when the fork was detected  */
-  uint256 public forkDetectedTime = 0;
-
-  /** When was the last fork retarget time */
-  uint256 public confirmationRetargetTimestamp = 0;
-  
   /** Fork detected event */
   event FORK_DETECTED(uint256 height, bytes32 storedBlockHash, bytes32 collidingBlockHash, uint256 newConfirmations);
 
@@ -172,7 +172,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
       // Increase the confirmations required
       CONFIRMATIONS = (CONFIRMATIONS * 4 ) / 3 + affectedBlocks;
       emit FORK_DETECTED(height, blockHeightToBlockHash[height], collidingBlockHash, CONFIRMATIONS);
-      forkDetectedTime = block.timestamp;
+      forkDetectedTime = uint32(block.timestamp);
 
       // Higher rewards for users notifying the forks
       _allocateTokens(msg.sender, FORK_DETECTION_RESOLUTION_REWARD_FACTOR); 
@@ -182,11 +182,13 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
       Allocate tokens to the beneficiary
    */
   function _allocateTokens(address beneficiary, uint256 factor) internal {
-      _mint(beneficiary, currentReward * factor);
-      if ((confirmedBlockHeight - initialConfirmedBlockHeight) % REWARD_HALVING_TIME == 0 && currentReward > MIN_REWARD) {
-        currentReward = currentReward / 2;
-        if (currentReward < MIN_REWARD) {
-          currentReward = MIN_REWARD;
+      uint64 reward = currentReward;
+      uint64 minReward = MIN_REWARD;
+      _mint(beneficiary, reward * factor);
+      if (reward > minReward && ((confirmedBlockHeight - initialConfirmedBlockHeight) % REWARD_HALVING_TIME == 0)) {
+        reward = reward / 2;
+        if (reward < minReward) {
+          currentReward = minReward;
         }
       }
   }
@@ -208,7 +210,7 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
           }
 
           // Update when the last confirmation retarget happened
-          confirmationRetargetTimestamp = block.timestamp;
+          confirmationRetargetTimestamp = uint32(block.timestamp);
           
           bytes32 blockHashToConfirm = currentBlockHash;
           uint32 blockHeight = height;
