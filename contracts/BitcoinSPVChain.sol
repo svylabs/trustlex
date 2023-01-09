@@ -189,6 +189,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
         reward = reward / 2;
         if (reward < minReward) {
           currentReward = minReward;
+        } else {
+          currentReward = reward;
         }
       }
   }
