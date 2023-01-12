@@ -131,7 +131,8 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
    */
   function _confirmBlock(bytes32 previousHeaderHash, uint32 blockHeight) internal {
     bytes32 blockHashToConfirm = previousHeaderHash;
-    uint32 confirmationBlockHeight = blockHeight - CONFIRMATIONS;
+    uint256 confirmations = CONFIRMATIONS;
+    uint256 confirmationBlockHeight = blockHeight - confirmations;
 
     // Check if there is any checkpointed block height, block confirmation cannot happen for blockheight < checkpointed height
     require(confirmationBlockHeight > checkpointedHeight);
@@ -150,10 +151,10 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
     if (blockCompactBytes != 0x0 && existingConfirmedBlockHash == 0x0) {
       // Set confirmed block height
       blockHeightToBlockHash[confirmationBlockHeight] = blockHashToConfirm;
-      confirmedBlockHeight = confirmationBlockHeight;
+      confirmedBlockHeight = uint32(confirmationBlockHeight);
       address submitter = _getBlockSubmitter(blockCompactBytes);
 
-      _allocateTokens(submitter, 10 ** (CONFIRMATIONS / 10));
+      _allocateTokens(submitter, 10 ** (confirmations / 10));
       emit BLOCK_CONFIRMED(blockHashToConfirm);
     } else if (blockCompactBytes != 0x0 && existingConfirmedBlockHash != 0x0 && existingConfirmedBlockHash != blockHashToConfirm) { // TODO: Check this condition again
       _forkDetected(confirmationBlockHeight, existingConfirmedBlockHash);
