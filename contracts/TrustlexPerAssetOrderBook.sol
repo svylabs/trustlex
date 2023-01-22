@@ -19,14 +19,15 @@ contract TrustlexPerAssetOrderBook {
     struct Offer {
         address orderedBy;
         uint256 orderQuantity;
-        uint64 satsToReceive;
-        uint64 satsReceived;
+        uint64 satoshisToReceive;
+        uint64 satoshisReceived;
         bytes20 bitcoinAddress;
         uint32 offerValidTill;
         uint8 minimumCollateral;
         uint32 orderedTime;
-        mapping (address => FulfillmentRequest) reservation;
     }
+
+    mapping (uint256 => mapping (address => FulfillmentRequest)) initializedOrders;
 
     mapping (uint256 => Offer) public offers;
 
@@ -36,16 +37,38 @@ contract TrustlexPerAssetOrderBook {
         tokenContract = _tokenContract; 
     }
 
-    function addOfferWithEth() public payable {
+    Offer private _offer;
 
+    event NEW_OFFER(uint256 indexed requestId);
+
+    function addOfferWithEth(uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public payable {
+        require(tokenContract == address(0x0));
+        Offer memory offer = _offer;
+        offer.orderedBy = msg.sender;
+        offer.orderQuantity = msg.value;
+        offer.satoshisToReceive = satoshis;
+        offer.bitcoinAddress = bitcoinAddress;
+        offer.offerValidTill = offerValidTill;
+        uint256 offerId = uint256(keccak256(abi.encode(offer, block.number)));
+        offers[offerId] = offer;
+        emit NEW_OFFER(offerId);
     }
 
-    function addOfferWithToken() public {
-
+    function addOfferWithToken(uint256 value, uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill)) public {
+        require(tokenContract != address(0x0));
+        Offer memory offer = _offer;
+        offer.orderedBy = msg.sender;
+        offer.orderQuantity = value;
+        offer.satoshisToReceive = satoshis;
+        offer.bitcoinAddress = bitcoinAddress;
+        offer.offerValidTill = offerValidTill;
+        uint256 offerId = uint256(keccak256(abi.encode(offer, block.number)));
+        offers[offerId] = offer;
+        emit NEW_OFFER(offerId);
     }
 
     function initiateFulfillment(uint256 offerId, FulfillmentRequest calldata fulfillment) public {
-
+        
     }
 
     /*
