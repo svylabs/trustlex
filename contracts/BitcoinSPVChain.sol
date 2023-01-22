@@ -10,20 +10,24 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   using SafeMath for uint256;
 
-  /** Current reward for submitting the blocks */
-  uint64 public currentReward = uint64(50 * (10 ** decimals()));
+  /** Reward halving time for block submission */
+  uint32 public constant REWARD_HALVING_TIME = 144 * 30; // every 4320 blocks
+
+  uint32 public constant CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
+
+  uint32 public constant FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
+
+  /** Number of blocks needed on top of an existing block for confirmation of a certain block */
+  uint32 public constant MIN_CONFIRMATIONS = 6;
 
   /** Minimum Reward to be paid by the contract for submitting blocks */
-  uint64 public MIN_REWARD = uint64(1 * (10 ** (decimals() - 2))); // 0.01 SPVC
+  uint32 public constant MIN_REWARD = uint32(1 * (10 ** (DECIMALS - 2))); // 0.01 SPVC
 
-  /** Reward halving time for block submission */
-  uint32 public REWARD_HALVING_TIME = 144 * 30; // every 4320 blocks
+  /** Current reward for submitting the blocks */
+  uint32 public currentReward = uint32(42 * (10 ** decimals()));
 
   /** Number of blocks needed on top of an existing block for confirmation of a certain block */
   uint32 public CONFIRMATIONS = 6;
-
-  /** Number of blocks needed on top of an existing block for confirmation of a certain block */
-  uint32 public MIN_CONFIRMATIONS = 6;
 
   /** This is needed when doing the difficulty adjustment for the first time and is set by constructor */
   uint32 public initialEpochTime;
@@ -35,10 +39,6 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   /** First block height */
   uint32 public initialConfirmedBlockHeight = 0;
-
-  uint32 public CONFIRMATION_RETARGET_TIME_PERIOD = 6 * 60 * 60;
-
-  uint32 public FORK_DETECTION_RESOLUTION_REWARD_FACTOR = 15;
 
   /** Time when the fork was detected  */
   uint32 public forkDetectedTime = 0;
@@ -189,9 +189,9 @@ contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
       if (reward > minReward && ((confirmedBlockHeight - initialConfirmedBlockHeight) % REWARD_HALVING_TIME == 0)) {
         reward = reward / 2;
         if (reward < minReward) {
-          currentReward = minReward;
+          currentReward = MIN_REWARD;
         } else {
-          currentReward = reward;
+          currentReward = MIN_REWARD;
         }
       }
   }

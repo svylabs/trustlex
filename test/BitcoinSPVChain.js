@@ -96,9 +96,9 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                     //console.log(res.receipt.logs[0]);
                 }
                 if (i > 6 && i <= 30) {
-                    ownerBalance += 50;
+                    ownerBalance += 42;
                 } else if (i > 30) {
-                    user1Balance += 50;
+                    user1Balance += 42;
                 }
                 const header = await this.bitcoinSPVChain.getBlockHeader.call(parts[0], txParams);
                 //assert.equal(header.blockHeight, parseInt(parts[2]), "Header height doesn't match");
@@ -122,6 +122,5 @@ fs.readFile('./test/files/confirmation_test.csv', 'utf8', (err, data) => {
                 console.log(ownerBalance, ownBal, user1Balance, user1Bal);
             });
         });
-        
     });
 })

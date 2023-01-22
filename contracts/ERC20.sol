@@ -11,6 +11,8 @@ contract ERC20 is IERC20 {
 
     uint256 private _totalSupply;
 
+    uint32 internal constant DECIMALS = 8;
+
     /**
      * @dev Returns the name of the token.
      */
@@ -40,7 +42,7 @@ contract ERC20 is IERC20 {
      * {IERC20-balanceOf} and {IERC20-transfer}.
      */
     function decimals() public view virtual returns (uint8) {
-        return 8;
+        return uint8(DECIMALS);
     }
 
     /**
