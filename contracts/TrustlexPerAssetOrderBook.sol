@@ -4,6 +4,7 @@ import {SafeMath} from "./SafeMath.sol";
 import {ERC20} from "./ERC20.sol";
 import {ITxVerifier} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
+import {IERC20} from './IERC20.sol';
 
 contract TrustlexPerAssetOrderBook {
 
@@ -38,13 +39,17 @@ contract TrustlexPerAssetOrderBook {
 
     address public tokenContract;
 
-    constructor (address _tokenContract) {
-        tokenContract = _tokenContract; 
+    constructor (bytes20 _tokenContract) {
+        tokenContract = address(_tokenContract); 
     }
 
     Offer private _offer;
 
-    event NEW_OFFER(uint256 indexed requestId);
+    event NEW_OFFER(address indexed offeredBy, uint256 indexed requestId);
+
+    event INITIALIZED_FULFILLMENT(address indexed claimedBy, uint256 indexed requestId, uint256 indexed fulfillmentId);
+
+    event PAYMENT_SUCCESSFUL(address indexed submittedBy, uint256 indexed requestId, uint256 indexed fulfillmentId);
 
     function addOfferWithEth(uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public payable {
         require(tokenContract == address(0x0));
@@ -57,7 +62,7 @@ contract TrustlexPerAssetOrderBook {
         offer.offeredBlockNumber = uint32(block.number);
         uint256 offerId = uint256(keccak256(abi.encode(offer)));
         offers[offerId] = offer;
-        emit NEW_OFFER(offerId);
+        emit NEW_OFFER(msg.sender, offerId);
     }
 
     function addOfferWithToken(uint256 value, uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public {
@@ -71,33 +76,32 @@ contract TrustlexPerAssetOrderBook {
         offer.offeredBlockNumber = uint32(block.number);
         uint256 offerId = uint256(keccak256(abi.encode(offer)));
         offers[offerId] = offer;
-        emit NEW_OFFER(offerId);
+        emit NEW_OFFER(msg.sender, offerId);
     }
 
     function initiateFulfillment(uint256 offerId, FulfillmentRequest calldata _fulfillment) public payable {
-        uint64 satoshisToReceive = offers[offerId].satoshisToReceive;
-        uint64 satoshisReserved = offers[offerId].satoshisReserved;
-        uint64 satoshisReceived = offers[offerId].satoshisReceived;
-        uint64 quantityRequested = _fulfillment.quantityRequested;
+        Offer memory offer = offers[offerId];
+        uint64 satoshisToReceive = offer.satoshisToReceive;
+        uint64 satoshisReserved = offer.satoshisReserved;
+        uint64 satoshisReceived = offer.satoshisReceived;
         if (satoshisToReceive == (satoshisReserved + satoshisReceived)) {
-            uint256[] memory fulfillmentIds = offers[offerId].fulfillmentRequests;
+            // Expire older fulfillments 
+            uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
             for (uint256 index = 0; index < fulfillmentIds.length;index++) {
                 FulfillmentRequest memory existingFulfillmentRequest = initializedFulfillments[offerId][fulfillmentIds[index]];
                 if (existingFulfillmentRequest.expiryTime < block.timestamp) {
-                    require(quantityRequested == existingFulfillmentRequest.quantityRequested);
                     // TODO: Claim any satoshis reserved
-                    offers[offerId].satoshisReserved -= existingFulfillmentRequest.quantityRequested;
+                    offer.satoshisReserved -= existingFulfillmentRequest.quantityRequested;
                     // TODO: Claim collateral
-
                 }
             }
-            satoshisReserved = offers[offerId].satoshisReserved;
+            satoshisReserved = offer.satoshisReserved;
         }
         require(satoshisToReceive >= (satoshisReserved + satoshisReceived + _fulfillment.quantityRequested));
         FulfillmentRequest memory fulfillment = _fulfillment;
         fulfillment.fulfillmentBy = msg.sender;
         if (satoshisReserved > 0) {
-            require(fulfillment.totalCollateralAdded > offers[offerId].collateralPer3Hours);
+            require(fulfillment.totalCollateralAdded > offer.collateralPer3Hours);
         }
         if (fulfillment.totalCollateralAdded > 0 && tokenContract == address(0x0)) {
             fulfillment.totalCollateralAdded = msg.value;
@@ -108,21 +112,30 @@ contract TrustlexPerAssetOrderBook {
         fulfillment.expiryTime  = uint32(block.timestamp);
         uint256 fulfillmentId = uint256(keccak256(abi.encode(fulfillment, block.timestamp)));
         initializedFulfillments[offerId][fulfillmentId] = fulfillment;
+        offers[offerId].satoshisReserved = offer.satoshisReserved;
+        offers[offerId].fulfillmentRequests.push(fulfillmentId);
+        emit INITIALIZED_FULFILLMENT(msg.sender, offerId, fulfillmentId);
     }
 
     /*
-       validate transaction 
+       validate transaction  and pay all involved parties
     */
-    function submitPaymentProof(uint256 offerId, bytes calldata transaction, bytes calldata proof, uint32 blockHeight) public {
-
+    function submitPaymentProof(uint256 offerId, uint256 fulfillmentId, bytes calldata transaction, bytes calldata proof, uint32 blockHeight) public {
+        // TODO: Validate  transaction here
+        require(initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0);
+        offers[offerId].satoshisReceived += initializedFulfillments[offerId][fulfillmentId].quantityRequested;
+        offers[offerId].satoshisReserved -= initializedFulfillments[offerId][fulfillmentId].quantityRequested;
+        // Send ETH / TOKEN on success
+        if (tokenContract == address(0x0)) {
+            (bool success, ) = (initializedFulfillments[offerId][fulfillmentId].fulfillmentBy).call{value:  initializedFulfillments[offerId][fulfillmentId].quantityRequested}("");
+            require(success, "Transfer failed");
+        } else {
+            initializedFulfillments[offerId][fulfillmentId].fulfilledTime = uint32(block.timestamp);
+            IERC20(tokenContract).transfer(initializedFulfillments[offerId][fulfillmentId].fulfillmentBy, initializedFulfillments[offerId][fulfillmentId].quantityRequested);
+        }
+        emit PAYMENT_SUCCESSFUL(msg.sender, offerId, fulfillmentId);
     }
 
-    /*
-       validate transaction 
-    */
-    function submitPaymentProof(address requester, uint256 offerId, bytes calldata transaction, bytes calldata proof, uint32 blockHeight) public {
-
-    }
 
     function addEthCollateral() public payable {
 
