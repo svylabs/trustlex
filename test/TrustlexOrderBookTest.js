@@ -20,11 +20,12 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
             txParams
             );
         //console.log(res.logs[0].args);
-        await this.trustlexappcontract.addOfferWithEth(90000000, '0x0000000000000000000000000000000000000001', (parseInt((new Date).getTime() / 1000) + 6 * 24 * 60 * 60), txParams1);
+        let res1= await this.trustlexappcontract.addOfferWithEth(90000000, '0x0000000000000000000000000000000000000001', (parseInt((new Date).getTime() / 1000) + 6 * 24 * 60 * 60), txParams1);
         await this.trustlexappcontract.addOfferWithEth(80000000, '0x0000000000000000000000000000000000000003', (parseInt((new Date).getTime() / 1000) + 6 * 24 * 60 * 60), txParams2);
         //  function initiateFulfillment(uint256 offerId, FulfillmentRequest calldata _fulfillment) public payable {
         //console.log(res.logs[0].args["1"]);
         res = await this.trustlexappcontract.initiateFulfillment(res.logs[0].args["1"], {fulfillmentBy: user4, quantityRequested: 10000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user4});
+        res = await this.trustlexappcontract.initiateFulfillment(res1.logs[0].args["1"], {fulfillmentBy: user5, quantityRequested: 20000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user3});
         //console.log(res);
     });
 })
