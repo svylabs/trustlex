@@ -11,29 +11,31 @@ contract TrustlexPerAssetOrderBook {
     struct FulfillmentRequest {
         address fulfillmentBy;
         uint64 quantityRequested;
+        uint32 expiryTime;
+        uint256 totalCollateralAdded;
+        address collateralAddedBy;
+        uint32 fulfilledTime;
         bool allowAnyoneToSubmitPaymentProofForFee;
         bool allowAnyoneToAddCollateralForFee;
-        uint256 totalCollateralAdded;
-        uint32 expiryTime;
-        uint32 fulfilledTime;
-        address collateralAddedBy;
+        
+        
     }
 
     struct Offer {
-        address offeredBy;
         uint256 offerQuantity;
+        address offeredBy;
+        uint32 offerValidTill;
+        uint32 orderedTime;
+        uint32 offeredBlockNumber;
+        bytes20 bitcoinAddress;
         uint64 satoshisToReceive;
         uint64 satoshisReceived;
         uint64 satoshisReserved;
-        bytes20 bitcoinAddress;
-        uint32 offerValidTill;
         uint8 collateralPer3Hours;
-        uint32 orderedTime;
-        uint32 offeredBlockNumber;
         uint256[] fulfillmentRequests;
     }
 
-    mapping (uint256 => mapping(uint256 => FulfillmentRequest)) initializedFulfillments;
+    mapping (uint256 => mapping(uint256 => FulfillmentRequest)) public initializedFulfillments;
 
     mapping (uint256 => Offer) public offers;
 
@@ -45,11 +47,11 @@ contract TrustlexPerAssetOrderBook {
 
     Offer private _offer;
 
-    event NEW_OFFER(address indexed offeredBy, uint256 indexed requestId);
+    event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
-    event INITIALIZED_FULFILLMENT(address indexed claimedBy, uint256 indexed requestId, uint256 indexed fulfillmentId);
+    event INITIALIZED_FULFILLMENT(address indexed claimedBy, uint256 indexed offerId, uint256 indexed fulfillmentId);
 
-    event PAYMENT_SUCCESSFUL(address indexed submittedBy, uint256 indexed requestId, uint256 indexed fulfillmentId);
+    event PAYMENT_SUCCESSFUL(address indexed submittedBy, uint256 indexed offerId, uint256 indexed fulfillmentId);
 
     function addOfferWithEth(uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public payable {
         require(tokenContract == address(0x0));
