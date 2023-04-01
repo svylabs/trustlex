@@ -11,7 +11,7 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
     it ('Create contract and add some data', async function() {
         //trustlexapp.link(await BitcoinUtils.deployed());
         //trustlexapp.link(await SafeMath.deployed());
-        this.trustlexappcontract = await trustlexapp.new('0x0', txParam);
+        this.trustlexappcontract = await trustlexapp.new('0x0000000000000000000000000000000000000000', txParam);
         console.log(this.trustlexappcontract.address);
         //function addOfferWithEth(uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public payable {
         let res = await this.trustlexappcontract.addOfferWithEth(100000000, 
@@ -26,6 +26,13 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         //console.log(res);
         res = await this.trustlexappcontract.initiateFulfillment(res.logs[0].args["1"], {fulfillmentBy: user4, quantityRequested: 10000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user4});
         res = await this.trustlexappcontract.initiateFulfillment(res1.logs[0].args["1"], {fulfillmentBy: user5, quantityRequested: 20000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user3});
+
+        console.log(await this.trustlexappcontract.getTotalOffers());
+        const offers = await this.trustlexappcontract.getOffers(3);
+        console.log(offers.total);
+        console.log(offers.result[0].offerId, offers.result[0].offer);
+        console.log(offers.result[1].offerId, offers.result[1].offer);
+        console.log(offers.result[2].offerId, offers.result[2].offer);
         //console.log(res);
     });
 })
