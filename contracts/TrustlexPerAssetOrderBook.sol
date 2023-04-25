@@ -110,12 +110,14 @@ contract TrustlexPerAssetOrderBook {
     );
 
     function addOfferWithEth(
+        uint256 weieth,
         uint64 satoshis,
         bytes20 bitcoinAddress,
         uint32 offerValidTill
     ) public payable {
         CompactMetadata memory compact = deconstructMetadata();
         require(compact.tokenContract == address(0x0));
+        require(msg.value >= weieth, "Please send the correct eth amount!");
         Offer memory offer;
         offer.offeredBy = msg.sender;
         offer.offerQuantity = msg.value;
