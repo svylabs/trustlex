@@ -1,0 +1,26 @@
+{
+  "name": "trustless",
+  "version": "1.0.0",
+  "description": "Trustlex is a decentralized cross chain, non-custodial Bitcoin exchange protocol which can be used to exchange Bitcoin with assets on the other chain(eg: Ethereum, Avalanche C-Chain or other EVM compatible chains)",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svylabs/trustlex.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/svylabs/trustlex/issues"
+  },
+  "homepage": "https://github.com/svylabs/trustlex#readme",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.8.3"
+  }
+}
