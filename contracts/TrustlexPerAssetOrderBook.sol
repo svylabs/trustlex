@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.4.22 <0.9.0;
 import {SafeMath} from "./SafeMath.sol";
-import {ERC20} from "./ERC20.sol";
 import {ITxVerifier} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
 import {IERC20} from "./IERC20.sol";
 
 contract TrustlexPerAssetOrderBook {
+    IERC20 public MyTokenERC20;
+
     struct FulfillmentRequest {
         address fulfillmentBy;
         uint64 quantityRequested;
@@ -42,6 +43,7 @@ contract TrustlexPerAssetOrderBook {
     constructor(address _tokenContract) {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
+        MyTokenERC20 = IERC20(_tokenContract);
     }
 
     struct CompactMetadata {
@@ -140,6 +142,14 @@ contract TrustlexPerAssetOrderBook {
         bytes20 bitcoinAddress,
         uint32 offerValidTill
     ) public {
+        require(
+            value <= MyTokenERC20.allowance(msg.sender, address(this)),
+            "Sender does not have allownace."
+        );
+
+        // transfer the tokens
+        MyTokenERC20.transferFrom(msg.sender, address(this), value);
+
         CompactMetadata memory compact = deconstructMetadata();
         require(compact.tokenContract != address(0x0));
         Offer memory offer;
