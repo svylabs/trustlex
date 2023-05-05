@@ -33,16 +33,26 @@ contract TrustlexPerAssetOrderBook {
         uint256[] fulfillmentRequests;
     }
 
-    mapping(uint256 => mapping(uint256 => FulfillmentRequest))
-        public initializedFulfillments;
-
-    mapping(uint256 => Offer) public offers;
-
-    uint256 public orderBookCompactMetadata;
     struct ResultOffer {
         uint256 offerId;
         Offer offer;
     }
+    struct ResultFulfillmentRequest {
+        FulfillmentRequest fulfillmentRequest;
+        uint256 fulfillmentRequestId;
+    }
+
+    struct CompactMetadata {
+        address tokenContract; // 20 bytes
+        uint32 totalOrdersInOrderBook; // total orders in order book
+    }
+
+    uint256 public orderBookCompactMetadata;
+
+    mapping(uint256 => mapping(uint256 => FulfillmentRequest))
+        public initializedFulfillments;
+
+    mapping(uint256 => Offer) public offers;
 
     event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
@@ -62,11 +72,6 @@ contract TrustlexPerAssetOrderBook {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-    }
-
-    struct CompactMetadata {
-        address tokenContract; // 20 bytes
-        uint32 totalOrdersInOrderBook; // total orders in order book
     }
 
     function deconstructMetadata()
@@ -90,6 +95,13 @@ contract TrustlexPerAssetOrderBook {
 
     function getTotalOffers() public view returns (uint256) {
         return ((orderBookCompactMetadata >> (8 * 8)) & 0xffffffff);
+    }
+
+    // This function will return the full offer details
+    function getOffer(
+        uint256 offerId
+    ) public view returns (Offer memory offer) {
+        offer = offers[offerId];
     }
 
     function getOffers(
@@ -214,13 +226,38 @@ contract TrustlexPerAssetOrderBook {
             fulfillment.collateralAddedBy = msg.sender;
         }
         fulfillment.expiryTime = uint32(block.timestamp);
-        uint256 fulfillmentId = uint256(
-            keccak256(abi.encode(fulfillment, block.timestamp))
-        );
+        // uint256 fulfillmentId = uint256(
+        //     keccak256(abi.encode(fulfillment, block.timestamp))
+        // );
+        uint256 fulfillmentId = getOffer(offerId).fulfillmentRequests.length;
         initializedFulfillments[offerId][fulfillmentId] = fulfillment;
         offers[offerId].satoshisReserved = offer.satoshisReserved;
         offers[offerId].fulfillmentRequests.push(fulfillmentId);
         emit INITIALIZED_FULFILLMENT(msg.sender, offerId, fulfillmentId);
+    }
+
+    // get the initial fullfillments list
+    function getInitiateFulfillments(
+        uint256 offerId
+    ) public view returns (ResultFulfillmentRequest[] memory) {
+        uint256[] memory fulfillmentIds = offers[offerId].fulfillmentRequests;
+        ResultFulfillmentRequest[]
+            memory resultFulfillmentRequest = new ResultFulfillmentRequest[](
+                fulfillmentIds.length
+            );
+
+        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+            FulfillmentRequest
+                memory existingFulfillmentRequest = initializedFulfillments[
+                    offerId
+                ][fulfillmentIds[index]];
+            resultFulfillmentRequest[index] = ResultFulfillmentRequest(
+                existingFulfillmentRequest,
+                fulfillmentIds[index]
+            );
+        }
+
+        return resultFulfillmentRequest;
     }
 
     /*

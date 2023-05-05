@@ -13,7 +13,7 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         //trustlexapp.link(await BitcoinUtils.deployed());
         //trustlexapp.link(await SafeMath.deployed());
         this.trustlexappcontract = await trustlexapp.new('0x0000000000000000000000000000000000000000', txParam);
-        console.log(this.trustlexappcontract.address);
+        // console.log(this.trustlexappcontract.address);
         //function addOfferWithEth(uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public payable {
         let res = await this.trustlexappcontract.addOfferWithEth(txParams.value,100000000, 
             '0x0000000000000000000000000000000000000000', 
@@ -24,8 +24,10 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         let res1= await this.trustlexappcontract.addOfferWithEth(txParams1.value,90000000, '0x0000000000000000000000000000000000000001', (parseInt((new Date).getTime() / 1000) + 6 * 24 * 60 * 60), txParams1);
         await this.trustlexappcontract.addOfferWithEth(txParams2.value,80000000, '0x0000000000000000000000000000000000000003', (parseInt((new Date).getTime() / 1000) + 6 * 24 * 60 * 60), txParams2);
         //  function initiateFulfillment(uint256 offerId, FulfillmentRequest calldata _fulfillment) public payable {
-        //console.log(res);
-        
+        // console.log(res);
+        let offerId_ = res.logs[0].args["1"];
+        let offer = await this.trustlexappcontract.getOffer(offerId_);
+        // console.log( offer.fulfillmentRequests,offer.fulfillmentRequests.length);
 
         initiateFulfillmentRes1 = await this.trustlexappcontract.initiateFulfillment(res.logs[0].args["1"], {fulfillmentBy: user4, quantityRequested: 10000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user4});
         let quantityRequested = 10000000;
@@ -33,29 +35,46 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         let orderBy = initiateFulfillmentEventArgumnets[0];
         let offerId = initiateFulfillmentEventArgumnets[1].toString();
         let fulfillmentId  = initiateFulfillmentEventArgumnets[2].toString();
-        console.log(res.logs[0].args["1"].toString(),orderBy,offerId,fulfillmentId);
-        // get the eth balance of user
-        let userBalance = await web3.eth.getBalance(user4);
-        userBalance = web3.utils.fromWei(userBalance,"ether")
-        console.log(user4,userBalance)
-
-        let balance = await this.trustlexappcontract.getBalance();
-        console.log(balance.toString())
-        // initiateFulfillmentRes2 = await this.trustlexappcontract.initiateFulfillment(res1.logs[0].args["1"], {fulfillmentBy: user5, quantityRequested: 20000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user3});
+        // console.log( (await this.trustlexappcontract.getTotalOffers()),offerId)
         
-        //submit the proof 
-        // function submitPaymentProof(
-        //     uint256 offerId,
-        //     uint256 fulfillmentId // bytes calldata transaction, // bytes calldata proof, // uint32 blockHeight
-        // )    
-        let submitPaymentProofRes = await this.trustlexappcontract.submitPaymentProof(initiateFulfillmentEventArgumnets[0],initiateFulfillmentEventArgumnets[2]);
-        console.log(submitPaymentProofRes)
-        userBalance = await web3.eth.getBalance(user4);
-        userBalance = web3.utils.fromWei(userBalance,"ether")
-        console.log(user4,userBalance)
+        offer = await this.trustlexappcontract.getOffer(offerId_);
+        // console.log( offer.fulfillmentRequests,offer.fulfillmentRequests.length);
+        // console.log(res.logs[0].args["1"].toString(),orderBy,offerId,fulfillmentId);
 
-        balance = await this.trustlexappcontract.getBalance();
-        console.log(balance.toString())
+        // // get the eth balance of user
+        // let userBalance = await web3.eth.getBalance(user4);
+        // userBalance = web3.utils.fromWei(userBalance,"ether")
+        // console.log(user4,userBalance)
+
+        // let balance = await this.trustlexappcontract.getBalance();
+        // console.log(balance.toString())
+        // // initiateFulfillmentRes2 = await this.trustlexappcontract.initiateFulfillment(res1.logs[0].args["1"], {fulfillmentBy: user5, quantityRequested: 20000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user3});
+        initiateFulfillmentRes2 = await this.trustlexappcontract.initiateFulfillment(res.logs[0].args["1"], {fulfillmentBy: user5, quantityRequested: 20000000, allowAnyoneToSubmitPaymentProofForFee: true, allowAnyoneToAddCollateralForFee: true, totalCollateralAdded: 0, expiryTime: 0, fulfilledTime: 0, collateralAddedBy: '0x0000000000000000000000000000000000000000'}, {from: user3});
+        offer = await this.trustlexappcontract.getOffer(offerId_);
+        // console.log( offer.fulfillmentRequests,offer.fulfillmentRequests.length);
+        // get the fullfillments
+        let _fulfillmentRequest0 = await this.trustlexappcontract.initializedFulfillments(offerId_,0);
+        let _fulfillmentRequest = await this.trustlexappcontract.getInitiateFulfillments(offerId_);
+        console.log(_fulfillmentRequest0,_fulfillmentRequest);
+        // let quantityRequested2 = 20000000;
+        // let initiateFulfillmentEventArgumnets2 = initiateFulfillmentRes2.logs[0].args
+        // let orderBy2 = initiateFulfillmentEventArgumnets2[0];
+        // let offerId2 = initiateFulfillmentEventArgumnets2[1].toString();
+        // let fulfillmentId2  = initiateFulfillmentEventArgumnets2[2].toString();
+        // console.log(res.logs[0].args["1"].toString(),orderBy,offerId,fulfillmentId);
+        // //submit the proof 
+        // // function submitPaymentProof(
+        // //     uint256 offerId,
+        // //     uint256 fulfillmentId // bytes calldata transaction, // bytes calldata proof, // uint32 blockHeight
+        // // )    
+        // let submitPaymentProofRes = await this.trustlexappcontract.submitPaymentProof(initiateFulfillmentEventArgumnets[0],initiateFulfillmentEventArgumnets[2]);
+        // // console.log(submitPaymentProofRes)
+        // userBalance = await web3.eth.getBalance(user4);
+        // userBalance = web3.utils.fromWei(userBalance,"ether")
+        // // console.log(user4,userBalance)
+
+        // balance = await this.trustlexappcontract.getBalance();
+        // console.log(balance.toString())
 
 
         // let totalOffers= await this.trustlexappcontract.getTotalOffers()
