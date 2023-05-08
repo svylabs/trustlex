@@ -39,6 +39,24 @@ contract TrustlexPerAssetOrderBook {
     mapping(uint256 => Offer) public offers;
 
     uint256 public orderBookCompactMetadata;
+    struct ResultOffer {
+        uint256 offerId;
+        Offer offer;
+    }
+
+    event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
+
+    event INITIALIZED_FULFILLMENT(
+        address indexed claimedBy,
+        uint256 indexed offerId,
+        uint256 indexed fulfillmentId
+    );
+
+    event PAYMENT_SUCCESSFUL(
+        address indexed submittedBy,
+        uint256 indexed offerId,
+        uint256 indexed fulfillmentId
+    );
 
     constructor(address _tokenContract) {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
@@ -74,11 +92,6 @@ contract TrustlexPerAssetOrderBook {
         return ((orderBookCompactMetadata >> (8 * 8)) & 0xffffffff);
     }
 
-    struct ResultOffer {
-        uint256 offerId;
-        Offer offer;
-    }
-
     function getOffers(
         uint256 fromOfferId
     ) public view returns (ResultOffer[50] memory result, uint256 total) {
@@ -96,20 +109,6 @@ contract TrustlexPerAssetOrderBook {
             });
         }
     }
-
-    event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
-
-    event INITIALIZED_FULFILLMENT(
-        address indexed claimedBy,
-        uint256 indexed offerId,
-        uint256 indexed fulfillmentId
-    );
-
-    event PAYMENT_SUCCESSFUL(
-        address indexed submittedBy,
-        uint256 indexed offerId,
-        uint256 indexed fulfillmentId
-    );
 
     function addOfferWithEth(
         uint256 weieth,
@@ -229,15 +228,13 @@ contract TrustlexPerAssetOrderBook {
     */
     function submitPaymentProof(
         uint256 offerId,
-        uint256 fulfillmentId,
-        bytes calldata transaction,
-        bytes calldata proof,
-        uint32 blockHeight
+        uint256 fulfillmentId // bytes calldata transaction, // bytes calldata proof, // uint32 blockHeight
     ) public {
         CompactMetadata memory compact = deconstructMetadata();
         // TODO: Validate  transaction here
         require(
-            initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0
+            initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0,
+            "fulfilledTime should be 0"
         );
         offers[offerId].satoshisReceived += initializedFulfillments[offerId][
             fulfillmentId
@@ -247,12 +244,18 @@ contract TrustlexPerAssetOrderBook {
         ].quantityRequested;
         // Send ETH / TOKEN on success
         if (compact.tokenContract == address(0x0)) {
-            (bool success, ) = (
+            // (bool success, ) = (
+            //     initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
+            // ).call{
+            //     value: initializedFulfillments[offerId][fulfillmentId]
+            //         .quantityRequested
+            // }("");
+            bool success = payable(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
-            ).call{
-                value: initializedFulfillments[offerId][fulfillmentId]
-                    .quantityRequested
-            }("");
+            ).send(
+                    initializedFulfillments[offerId][fulfillmentId]
+                        .quantityRequested
+                );
             require(success, "Transfer failed");
         } else {
             initializedFulfillments[offerId][fulfillmentId]
@@ -273,4 +276,8 @@ contract TrustlexPerAssetOrderBook {
     function extendOffer() public {}
 
     function liquidateCollateral() public payable {}
+
+    function getBalance() public view returns (uint256 balance) {
+        return address(this).balance;
+    }
 }
