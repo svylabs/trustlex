@@ -33,16 +33,26 @@ contract TrustlexPerAssetOrderBook {
         uint256[] fulfillmentRequests;
     }
 
-    mapping(uint256 => mapping(uint256 => FulfillmentRequest))
-        public initializedFulfillments;
-
-    mapping(uint256 => Offer) public offers;
-
-    uint256 public orderBookCompactMetadata;
     struct ResultOffer {
         uint256 offerId;
         Offer offer;
     }
+    struct ResultFulfillmentRequest {
+        FulfillmentRequest fulfillmentRequest;
+        uint256 fulfillmentRequestId;
+    }
+
+    struct CompactMetadata {
+        address tokenContract; // 20 bytes
+        uint32 totalOrdersInOrderBook; // total orders in order book
+    }
+
+    uint256 public orderBookCompactMetadata;
+
+    mapping(uint256 => mapping(uint256 => FulfillmentRequest))
+        public initializedFulfillments;
+
+    mapping(uint256 => Offer) public offers;
 
     event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
@@ -62,11 +72,6 @@ contract TrustlexPerAssetOrderBook {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-    }
-
-    struct CompactMetadata {
-        address tokenContract; // 20 bytes
-        uint32 totalOrdersInOrderBook; // total orders in order book
     }
 
     function deconstructMetadata()
@@ -90,6 +95,13 @@ contract TrustlexPerAssetOrderBook {
 
     function getTotalOffers() public view returns (uint256) {
         return ((orderBookCompactMetadata >> (8 * 8)) & 0xffffffff);
+    }
+
+    // This function will return the full offer details
+    function getOffer(
+        uint256 offerId
+    ) public view returns (Offer memory offer) {
+        offer = offers[offerId];
     }
 
     function getOffers(
@@ -174,6 +186,7 @@ contract TrustlexPerAssetOrderBook {
         uint64 satoshisToReceive = offer.satoshisToReceive;
         uint64 satoshisReserved = offer.satoshisReserved;
         uint64 satoshisReceived = offer.satoshisReceived;
+
         if (satoshisToReceive == (satoshisReserved + satoshisReceived)) {
             // Expire older fulfillments
             uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
@@ -191,17 +204,20 @@ contract TrustlexPerAssetOrderBook {
             }
             satoshisReserved = offer.satoshisReserved;
         }
+
         require(
             satoshisToReceive >=
                 (satoshisReserved +
                     satoshisReceived +
-                    _fulfillment.quantityRequested)
+                    _fulfillment.quantityRequested),
+            "satoshisToReceive is not equal or greater than sum of satoshisReserved amount ,satoshisReceived, current requested quanity"
         );
         FulfillmentRequest memory fulfillment = _fulfillment;
         fulfillment.fulfillmentBy = msg.sender;
         if (satoshisReserved > 0) {
             require(
-                fulfillment.totalCollateralAdded > offer.collateralPer3Hours
+                fulfillment.totalCollateralAdded > offer.collateralPer3Hours,
+                ""
             );
         }
         if (
@@ -213,14 +229,43 @@ contract TrustlexPerAssetOrderBook {
             // TODO: Get tokens from tokenContract
             fulfillment.collateralAddedBy = msg.sender;
         }
-        fulfillment.expiryTime = uint32(block.timestamp);
-        uint256 fulfillmentId = uint256(
-            keccak256(abi.encode(fulfillment, block.timestamp))
-        );
+        fulfillment.expiryTime = uint32(block.timestamp) + 3 * 60 * 60; //Adding 3 hours by Glen
+        // uint256 fulfillmentId = uint256(
+        //     keccak256(abi.encode(fulfillment, block.timestamp))
+        // );
+        uint256 fulfillmentId = getOffer(offerId).fulfillmentRequests.length;
         initializedFulfillments[offerId][fulfillmentId] = fulfillment;
-        offers[offerId].satoshisReserved = offer.satoshisReserved;
+        // offers[offerId].satoshisReserved = offer.satoshisReserved;
+        offers[offerId].satoshisReserved =
+            offer.satoshisReserved +
+            _fulfillment.quantityRequested;
+
         offers[offerId].fulfillmentRequests.push(fulfillmentId);
         emit INITIALIZED_FULFILLMENT(msg.sender, offerId, fulfillmentId);
+    }
+
+    // get the initial fullfillments list
+    function getInitiateFulfillments(
+        uint256 offerId
+    ) public view returns (ResultFulfillmentRequest[] memory) {
+        uint256[] memory fulfillmentIds = offers[offerId].fulfillmentRequests;
+        ResultFulfillmentRequest[]
+            memory resultFulfillmentRequest = new ResultFulfillmentRequest[](
+                fulfillmentIds.length
+            );
+
+        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+            FulfillmentRequest
+                memory existingFulfillmentRequest = initializedFulfillments[
+                    offerId
+                ][fulfillmentIds[index]];
+            resultFulfillmentRequest[index] = ResultFulfillmentRequest(
+                existingFulfillmentRequest,
+                fulfillmentIds[index]
+            );
+        }
+
+        return resultFulfillmentRequest;
     }
 
     /*
@@ -250,12 +295,16 @@ contract TrustlexPerAssetOrderBook {
             //     value: initializedFulfillments[offerId][fulfillmentId]
             //         .quantityRequested
             // }("");
+            // calculate the respective eth amount
+            uint256 payAmountETh = (
+                initializedFulfillments[offerId][fulfillmentId]
+                    .quantityRequested
+            ) *
+                (offers[offerId].offerQuantity /
+                    offers[offerId].satoshisToReceive);
             bool success = payable(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
-            ).send(
-                    initializedFulfillments[offerId][fulfillmentId]
-                        .quantityRequested
-                );
+            ).send(payAmountETh);
             require(success, "Transfer failed");
         } else {
             initializedFulfillments[offerId][fulfillmentId]
