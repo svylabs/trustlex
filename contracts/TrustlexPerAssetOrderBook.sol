@@ -17,6 +17,7 @@ contract TrustlexPerAssetOrderBook {
         uint32 fulfilledTime;
         bool allowAnyoneToSubmitPaymentProofForFee;
         bool allowAnyoneToAddCollateralForFee;
+        bool paymentProofSubmitted;
     }
 
     struct Offer {
@@ -49,6 +50,7 @@ contract TrustlexPerAssetOrderBook {
 
     uint256 public orderBookCompactMetadata;
 
+    // mapping(uint256 offerId => mapping(uint256 fullfillmentId => FulfillmentRequest fullfillmentData))
     mapping(uint256 => mapping(uint256 => FulfillmentRequest))
         public initializedFulfillments;
 
@@ -315,6 +317,8 @@ contract TrustlexPerAssetOrderBook {
                     .quantityRequested
             );
         }
+        initializedFulfillments[offerId][fulfillmentId]
+            .paymentProofSubmitted = true;
         emit PAYMENT_SUCCESSFUL(msg.sender, offerId, fulfillmentId);
     }
 

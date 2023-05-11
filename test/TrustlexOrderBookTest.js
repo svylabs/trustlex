@@ -85,7 +85,8 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
                 totalCollateralAdded: 0, 
                 expiryTime: 0, 
                 fulfilledTime: 0, 
-                collateralAddedBy: '0x0000000000000000000000000000000000000000'
+                collateralAddedBy: '0x0000000000000000000000000000000000000000',
+                paymentProofSubmitted:false,
             }, 
             {from: user4}
         );
@@ -112,7 +113,8 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
     //             totalCollateralAdded: 0, 
     //             expiryTime: 0, 
     //             fulfilledTime: 0, 
-    //             collateralAddedBy: '0x0000000000000000000000000000000000000000'
+    //             collateralAddedBy: '0x0000000000000000000000000000000000000000',
+                    // paymentProofSubmitted:false,
     //         }, 
     //         {from: user5}
     //     );
@@ -128,6 +130,65 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
 
         
     // });
+
+    it ('Create first initiateFulfillment for offer 2', async function() {
+        //  function initiateFulfillment(uint256 offerId, FulfillmentRequest calldata _fulfillment) public payable {
+        // create the  first initial fullfillments
+        this.totalFulfillmentRequestsforOffer2 = 0;     
+        let quantityRequested = 0.9*(10**8);// 1 BTC
+        
+        this.initiateFulfillmentRes1forOffer2 = await this.trustlexappcontract.initiateFulfillment(
+            this.offer2Id, 
+            {
+                fulfillmentBy: owner, 
+                quantityRequested: quantityRequested, 
+                allowAnyoneToSubmitPaymentProofForFee: true, 
+                allowAnyoneToAddCollateralForFee: true, 
+                totalCollateralAdded: 0, 
+                expiryTime: 0, 
+                fulfilledTime: 0, 
+                collateralAddedBy: '0x0000000000000000000000000000000000000000',
+                paymentProofSubmitted:false,
+            }, 
+            {from: owner}
+        );
+        this.totalFulfillmentRequestsforOffer2++;
+        let initiateFulfillmentEventArgumnets = this.initiateFulfillmentRes1forOffer2.logs[0].args
+        let orderBy = initiateFulfillmentEventArgumnets[0];
+        let offerId = initiateFulfillmentEventArgumnets[1].toString();
+        let fulfillmentId  = initiateFulfillmentEventArgumnets[2].toString();
+        let offer = await this.trustlexappcontract.getOffer(this.offer2Id);
+        assert.equal(offer.fulfillmentRequests.length,this.totalFulfillmentRequestsforOffer2,'First initiateFulfillment could not be created for offer2 !');
+    });
+
+    it ('Create first initiateFulfillment for offer 3', async function() {
+        // create the  first initial fullfillments
+        this.totalFulfillmentRequestsforOffer3 = 0;     
+        let quantityRequested = 0.8*(10**8);// 1 BTC
+        
+        this.initiateFulfillmentRes1forOffer3 = await this.trustlexappcontract.initiateFulfillment(
+            this.offer3Id, 
+            {
+                fulfillmentBy: owner, 
+                quantityRequested: quantityRequested, 
+                allowAnyoneToSubmitPaymentProofForFee: true, 
+                allowAnyoneToAddCollateralForFee: true, 
+                totalCollateralAdded: 0, 
+                expiryTime: 0, 
+                fulfilledTime: 0, 
+                collateralAddedBy: '0x0000000000000000000000000000000000000000',
+                paymentProofSubmitted:false,
+            }, 
+            {from: owner}
+        );
+        this.totalFulfillmentRequestsforOffer3++;
+        let initiateFulfillmentEventArgumnets = this.initiateFulfillmentRes1forOffer3.logs[0].args
+        let orderBy = initiateFulfillmentEventArgumnets[0];
+        let offerId = initiateFulfillmentEventArgumnets[1].toString();
+        let fulfillmentId  = initiateFulfillmentEventArgumnets[2].toString();
+        let offer = await this.trustlexappcontract.getOffer(this.offer3Id);
+        assert.equal(offer.fulfillmentRequests.length,this.totalFulfillmentRequestsforOffer3,'First initiateFulfillment could not be created for offer3 !');
+    });
 
     it ('Get initiateFulfillment for offer 1', async function() {
         //first fech the initiateFulfillmentIds
@@ -175,45 +236,319 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         // console.log('user4 post balance',userBalance)
     });
 
-    it ('Prepare the data for my-swap', async function() {
+    it ('Submit the proof for offer 3', async function() {
+        //first fech the initiateFulfillmentIds
+        let offer = await this.trustlexappcontract.getOffer(this.offer3Id);
+        let offerFulfillmentRequests = offer.fulfillmentRequests;
+        
+        let userBalance = await web3.eth.getBalance(owner);
+        userBalance = web3.utils.fromWei(userBalance,"ether")
+        console.log('owner pre balance ',userBalance);
+
+        let submitPaymentProofResults = [];
+        let i=0;
+        for(;i<offerFulfillmentRequests.length;i++){
+            let FulfillmentRequestId = offerFulfillmentRequests[i];
+            let submitPaymentProofRes = await this.trustlexappcontract.submitPaymentProof(this.offer3Id,FulfillmentRequestId);
+            submitPaymentProofResults.push(submitPaymentProofRes);
+        }
+        Promise.all(submitPaymentProofResults).then(async values=>{
+            values.forEach(function(currentValue, index, arr){
+                // console.log(currentValue.logs.args)
+            })
+            
+        })
+        userBalance = await web3.eth.getBalance(owner);
+        userBalance = web3.utils.fromWei(userBalance,"ether")
+        console.log('owner post balance',userBalance)
+    });
+
+    it ('Prepare the data for my-swap ongoing', async function() {
         // fetched the offer created by a user
         let totalOffers = await this.trustlexappcontract.getTotalOffers();
-        console.log(totalOffers.toString())
+        let account = owner;
         let offersData = await this.trustlexappcontract.getOffers(totalOffers);
         let totalFetchedRecords = offersData.total;
         let offers = offersData.result;
-        console.log(totalFetchedRecords);
-        console.log(owner)
-        const promises = [];
+        // console.log(totalFetchedRecords.toString());
+        // console.log(owner)
+        let MyOngoingOrdersPromises = [];
+        const MyOffersPromises = [];
         for (let i = 0; i < totalFetchedRecords; i++) {
             let value = offers[i];
             let offer = value.offer;
             let offerId = value.offerId.toString();
-            console.log(offer.offeredBy.toLowerCase() , owner.toLowerCase())
-            if(offer.offeredBy.toLowerCase() === owner.toLowerCase()){
-                const offerDetailsInJson = {
-                    offerId: offerId,
-                    offerQuantity: offer.offerQuantity.toString(),
-                    offeredBy: offer.offeredBy.toString(),
-                    offerValidTill: offer.offerValidTill.toString(),
-                    orderedTime: offer.orderedTime.toString(),
-                    offeredBlockNumber: offer.offeredBlockNumber.toString(),
-                    bitcoinAddress: offer.bitcoinAddress.toString(),
-                    satoshisToReceive: offer.satoshisToReceive.toString(),
-                    satoshisReceived: offer.satoshisReceived.toString(),
-                    satoshisReserved: offer.satoshisReserved.toString(),
-                    collateralPer3Hours: offer.collateralPer3Hours.toString(),
-                    fulfillmentRequests: offer.fulfillmentRequests,
-                    progress : '',
-                };
-                
-                promises.push({ offerDetailsInJson });
+            let fulfillmentRequests  = value.fulfillmentRequests;
+            
+            const offerDetailsInJson = {
+                offerId: offerId,
+                offerQuantity: offer.offerQuantity.toString(),
+                offeredBy: offer.offeredBy.toString(),
+                offerValidTill: offer.offerValidTill.toString(),
+                orderedTime: offer.orderedTime.toString(),
+                offeredBlockNumber: offer.offeredBlockNumber.toString(),
+                bitcoinAddress: offer.bitcoinAddress.toString(),
+                satoshisToReceive: offer.satoshisToReceive.toString(),
+                satoshisReceived: offer.satoshisReceived.toString(),
+                satoshisReserved: offer.satoshisReserved.toString(),
+                collateralPer3Hours: offer.collateralPer3Hours.toString(),
+                fulfillmentRequests: offer.fulfillmentRequests,
+                progress : '',
+                offerType: '',
+                fullfillmentRequestId:undefined,
+            };
+            if(offer.offeredBy.toLowerCase() === account.toLowerCase()){
+                let filled = 0;
+                let satoshisReserved = offer.satoshisReserved;
+                let satoshisToReceive = offer.satoshisToReceive;
+                filled = (satoshisReserved/satoshisToReceive)*100;
+                offerDetailsInJson.progress = filled+'% filled';
+                offerDetailsInJson.offerType = 'My Offer';
+                MyOffersPromises.push({ offerDetailsInJson });
             }
+
+            // get the fullfillment list
+            let FullfillmentResults = await this.trustlexappcontract.getInitiateFulfillments(value.offerId);
+            
+            let fullfillmentRequestId = undefined;
+            let fullfillmentResult = FullfillmentResults && FullfillmentResults.find((fullfillmentResult,index) => {
+                if(
+                  fullfillmentResult.fulfillmentRequest.fulfillmentBy.toLowerCase() ===
+                  account.toLowerCase() && fullfillmentResult.fulfillmentRequest.paymentProofSubmitted == false
+                ){
+                    fullfillmentRequestId = offer.fulfillmentRequests[index];
+                    return true;
+                }else{
+                    return false;
+                }
+              });
+             if(fullfillmentResult){
+                offerDetailsInJson.offerType = 'My Order';
+                offerDetailsInJson.progress = 'initiated';
+                offerDetailsInJson.fullfillmentRequestId = fullfillmentRequestId;
+
+             } 
+            fullfillmentResult && MyOffersPromises.push(offerDetailsInJson)
         }
+        const MyoffersList = await Promise.all(MyOffersPromises);
+        console.log('Ongoing offers',MyoffersList)
 
-        const offersList = await Promise.all(promises);
-        console.log(offersList)
+    });
 
+    it ('Prepare the data for my-swap completed', async function() {
+        // fetched the offer created by a user
+        let totalOffers = await this.trustlexappcontract.getTotalOffers();
+        let account = owner;
+        let offersData = await this.trustlexappcontract.getOffers(totalOffers);
+        let totalFetchedRecords = offersData.total;
+        let offers = offersData.result;
+        // console.log(totalFetchedRecords.toString());
+        // console.log(owner)
+        let MyOngoingOrdersPromises = [];
+        const MyOffersPromises = [];
+        for (let i = 0; i < totalFetchedRecords; i++) {
+            let value = offers[i];
+            let offer = value.offer;
+            let offerId = value.offerId.toString();
+            let fulfillmentRequests  = value.fulfillmentRequests;
+            
+            const offerDetailsInJson = {
+                offerId: offerId,
+                offerQuantity: offer.offerQuantity.toString(),
+                offeredBy: offer.offeredBy.toString(),
+                offerValidTill: offer.offerValidTill.toString(),
+                orderedTime: offer.orderedTime.toString(),
+                offeredBlockNumber: offer.offeredBlockNumber.toString(),
+                bitcoinAddress: offer.bitcoinAddress.toString(),
+                satoshisToReceive: offer.satoshisToReceive.toString(),
+                satoshisReceived: offer.satoshisReceived.toString(),
+                satoshisReserved: offer.satoshisReserved.toString(),
+                collateralPer3Hours: offer.collateralPer3Hours.toString(),
+                fulfillmentRequests: offer.fulfillmentRequests,
+                progress : '',
+                offerType: '',
+                fullfillmentRequestId:undefined,
+            };
+            let satoshisReserved = offer.satoshisReserved;
+            let satoshisToReceive = offer.satoshisToReceive;
+            let satoshisReceived = offer.satoshisReceived;
+            if(offer.offeredBy.toLowerCase() === account.toLowerCase() && satoshisReceived ==satoshisToReceive){
+                let filled = 0;
+                
+                filled = (satoshisReserved/satoshisToReceive)*100;
+                offerDetailsInJson.progress = 'Completed';
+                offerDetailsInJson.offerType = 'My Offer';
+                MyOffersPromises.push({ offerDetailsInJson });
+            }
+
+            // get the fullfillment list
+            let FullfillmentResults = await this.trustlexappcontract.getInitiateFulfillments(value.offerId);
+            
+            let fullfillmentRequestId = undefined;
+            let fullfillmentResult = FullfillmentResults && FullfillmentResults.find((fullfillmentResult,index) => {
+                if(
+                  fullfillmentResult.fulfillmentRequest.fulfillmentBy.toLowerCase() ===
+                  account.toLowerCase() && fullfillmentResult.fulfillmentRequest.paymentProofSubmitted == true
+                ){
+                    fullfillmentRequestId = offer.fulfillmentRequests[index];
+                    return true;
+                }else{
+                    return false;
+                }
+              });
+             if(fullfillmentResult){
+                offerDetailsInJson.offerType = 'My Order';
+                offerDetailsInJson.progress = 'initiated';
+                offerDetailsInJson.fullfillmentRequestId = fullfillmentRequestId;
+
+             } 
+            fullfillmentResult && MyOffersPromises.push(offerDetailsInJson)
+        }
+        const MyoffersList = await Promise.all(MyOffersPromises);
+        console.log('completed offers',MyoffersList)
+
+    });
+
+    it ('Prepare the data for all-swap ongoing', async function() {
+        // fetched the offer created by a user
+        let totalOffers = await this.trustlexappcontract.getTotalOffers();
+        let account = owner;
+        let offersData = await this.trustlexappcontract.getOffers(totalOffers);
+        let totalFetchedRecords = offersData.total;
+        let offers = offersData.result;
+        // console.log(totalFetchedRecords.toString());
+        // console.log(owner)
+        let MyOngoingOrdersPromises = [];
+        const MyOffersPromises = [];
+        for (let i = 0; i < totalFetchedRecords; i++) {
+            let value = offers[i];
+            let offer = value.offer;
+            let offerId = value.offerId.toString();
+            let fulfillmentRequests  = value.fulfillmentRequests;
+            
+            const offerDetailsInJson = {
+                offerId: offerId,
+                offerQuantity: offer.offerQuantity.toString(),
+                offeredBy: offer.offeredBy.toString(),
+                offerValidTill: offer.offerValidTill.toString(),
+                orderedTime: offer.orderedTime.toString(),
+                offeredBlockNumber: offer.offeredBlockNumber.toString(),
+                bitcoinAddress: offer.bitcoinAddress.toString(),
+                satoshisToReceive: offer.satoshisToReceive.toString(),
+                satoshisReceived: offer.satoshisReceived.toString(),
+                satoshisReserved: offer.satoshisReserved.toString(),
+                collateralPer3Hours: offer.collateralPer3Hours.toString(),
+                fulfillmentRequests: offer.fulfillmentRequests,
+                progress : '',
+                offerType: '',
+                fullfillmentRequestId:undefined,
+            };
+            // if(offer.offeredBy.toLowerCase() === account.toLowerCase()){
+                let filled = 0;
+                let satoshisReserved = offer.satoshisReserved;
+                let satoshisToReceive = offer.satoshisToReceive;
+                filled = (satoshisReserved/satoshisToReceive)*100;
+                offerDetailsInJson.progress = filled+'% filled';
+                offerDetailsInJson.offerType = 'My Offer';
+                MyOffersPromises.push({ offerDetailsInJson });
+            // }
+
+            // get the fullfillment list
+            let FullfillmentResults = await this.trustlexappcontract.getInitiateFulfillments(value.offerId);
+            
+            let fullfillmentRequestId = undefined;
+            let fullfillmentResult = FullfillmentResults && FullfillmentResults.find((fullfillmentResult,index) => {
+                if(
+                  fullfillmentResult.fulfillmentRequest.paymentProofSubmitted == false
+                ){
+                    fullfillmentRequestId = offer.fulfillmentRequests[index];
+                    return true;
+                }else{
+                    return false;
+                }
+              });
+             if(fullfillmentResult){
+                offerDetailsInJson.offerType = 'My Order';
+                offerDetailsInJson.progress = 'initiated';
+                offerDetailsInJson.fullfillmentRequestId = fullfillmentRequestId;
+
+             } 
+            fullfillmentResult && MyOffersPromises.push(offerDetailsInJson)
+        }
+        const MyoffersList = await Promise.all(MyOffersPromises);
+        console.log('All-swap Ongoing offers',MyoffersList);
+    });
+
+    it ('Prepare the data for All-swap completed', async function() {
+        // fetched the offer created by a user
+        let totalOffers = await this.trustlexappcontract.getTotalOffers();
+        let account = owner;
+        let offersData = await this.trustlexappcontract.getOffers(totalOffers);
+        let totalFetchedRecords = offersData.total;
+        let offers = offersData.result;
+        // console.log(totalFetchedRecords.toString());
+        // console.log(owner)
+        let MyOngoingOrdersPromises = [];
+        const MyOffersPromises = [];
+        for (let i = 0; i < totalFetchedRecords; i++) {
+            let value = offers[i];
+            let offer = value.offer;
+            let offerId = value.offerId.toString();
+            let fulfillmentRequests  = value.fulfillmentRequests;
+            
+            const offerDetailsInJson = {
+                offerId: offerId,
+                offerQuantity: offer.offerQuantity.toString(),
+                offeredBy: offer.offeredBy.toString(),
+                offerValidTill: offer.offerValidTill.toString(),
+                orderedTime: offer.orderedTime.toString(),
+                offeredBlockNumber: offer.offeredBlockNumber.toString(),
+                bitcoinAddress: offer.bitcoinAddress.toString(),
+                satoshisToReceive: offer.satoshisToReceive.toString(),
+                satoshisReceived: offer.satoshisReceived.toString(),
+                satoshisReserved: offer.satoshisReserved.toString(),
+                collateralPer3Hours: offer.collateralPer3Hours.toString(),
+                fulfillmentRequests: offer.fulfillmentRequests,
+                progress : '',
+                offerType: '',
+                fullfillmentRequestId:undefined,
+            };
+            let satoshisReserved = offer.satoshisReserved;
+            let satoshisToReceive = offer.satoshisToReceive;
+            let satoshisReceived = offer.satoshisReceived;
+            if(satoshisReceived ==satoshisToReceive){
+                let filled = 0;
+                
+                filled = (satoshisReserved/satoshisToReceive)*100;
+                offerDetailsInJson.progress = 'Completed';
+                offerDetailsInJson.offerType = 'My Offer';
+                MyOffersPromises.push({ offerDetailsInJson });
+            }
+
+            // get the fullfillment list
+            let FullfillmentResults = await this.trustlexappcontract.getInitiateFulfillments(value.offerId);
+            
+            let fullfillmentRequestId = undefined;
+            let fullfillmentResult = FullfillmentResults && FullfillmentResults.find((fullfillmentResult,index) => {
+                if(
+                  fullfillmentResult.fulfillmentRequest.paymentProofSubmitted == true
+                ){
+                    fullfillmentRequestId = offer.fulfillmentRequests[index];
+                    return true;
+                }else{
+                    return false;
+                }
+              });
+             if(fullfillmentResult){
+                offerDetailsInJson.offerType = 'My Order';
+                offerDetailsInJson.progress = 'initiated';
+                offerDetailsInJson.fullfillmentRequestId = fullfillmentRequestId;
+
+             } 
+            fullfillmentResult && MyOffersPromises.push(offerDetailsInJson)
+        }
+        const MyoffersList = await Promise.all(MyOffersPromises);
+        console.log('All completed offers',MyoffersList)
     });
 })
 
