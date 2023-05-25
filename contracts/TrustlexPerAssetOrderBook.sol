@@ -4,10 +4,11 @@ import {SafeMath} from "./SafeMath.sol";
 import {ITxVerifier} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
 import {IERC20} from "./IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract TrustlexPerAssetOrderBook {
+contract TrustlexPerAssetOrderBook is Ownable {
     IERC20 public MyTokenERC20;
-
+    uint32 public fullFillmentExpiryTime;
     struct FulfillmentRequest {
         address fulfillmentBy;
         uint64 quantityRequested;
@@ -17,6 +18,8 @@ contract TrustlexPerAssetOrderBook {
         uint32 fulfilledTime;
         bool allowAnyoneToSubmitPaymentProofForFee;
         bool allowAnyoneToAddCollateralForFee;
+        bool paymentProofSubmitted;
+        bool isExpired;
     }
 
     struct Offer {
@@ -37,6 +40,7 @@ contract TrustlexPerAssetOrderBook {
         uint256 offerId;
         Offer offer;
     }
+
     struct ResultFulfillmentRequest {
         FulfillmentRequest fulfillmentRequest;
         uint256 fulfillmentRequestId;
@@ -49,6 +53,7 @@ contract TrustlexPerAssetOrderBook {
 
     uint256 public orderBookCompactMetadata;
 
+    // mapping(uint256 offerId => mapping(uint256 fullfillmentId => FulfillmentRequest fullfillmentData))
     mapping(uint256 => mapping(uint256 => FulfillmentRequest))
         public initializedFulfillments;
 
@@ -72,6 +77,7 @@ contract TrustlexPerAssetOrderBook {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
+        fullFillmentExpiryTime = 1 * 60;
     }
 
     function deconstructMetadata()
@@ -91,6 +97,10 @@ contract TrustlexPerAssetOrderBook {
         compactMeta = (uint256(uint160(metadata.tokenContract)) << (12 * 8));
         compactMeta |= (uint256(metadata.totalOrdersInOrderBook) << (8 * 8));
         orderBookCompactMetadata = compactMeta;
+    }
+
+    function setFullFillmentExpiryTime(uint32 expiryTime) public onlyOwner {
+        fullFillmentExpiryTime = expiryTime;
     }
 
     function getTotalOffers() public view returns (uint256) {
@@ -187,23 +197,29 @@ contract TrustlexPerAssetOrderBook {
         uint64 satoshisReserved = offer.satoshisReserved;
         uint64 satoshisReceived = offer.satoshisReceived;
 
-        if (satoshisToReceive == (satoshisReserved + satoshisReceived)) {
-            // Expire older fulfillments
-            uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
-            for (uint256 index = 0; index < fulfillmentIds.length; index++) {
-                FulfillmentRequest
-                    memory existingFulfillmentRequest = initializedFulfillments[
-                        offerId
-                    ][fulfillmentIds[index]];
-                if (existingFulfillmentRequest.expiryTime < block.timestamp) {
-                    // TODO: Claim any satoshis reserved
-                    offer.satoshisReserved -= existingFulfillmentRequest
-                        .quantityRequested;
-                    // TODO: Claim collateral
-                }
+        // if (satoshisToReceive == (satoshisReserved + satoshisReceived)) {
+        // Expire older fulfillments
+        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
+        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+            FulfillmentRequest
+                memory existingFulfillmentRequest = initializedFulfillments[
+                    offerId
+                ][fulfillmentIds[index]];
+            if (
+                existingFulfillmentRequest.expiryTime < block.timestamp &&
+                existingFulfillmentRequest.isExpired == false
+            ) {
+                // TODO: Claim any satoshis reserved
+                offer.satoshisReserved -= existingFulfillmentRequest
+                    .quantityRequested;
+
+                initializedFulfillments[offerId][fulfillmentIds[index]]
+                    .isExpired = true;
+                // TODO: Claim collateral
             }
-            satoshisReserved = offer.satoshisReserved;
         }
+        satoshisReserved = offer.satoshisReserved;
+        // }
 
         require(
             satoshisToReceive >=
@@ -214,10 +230,12 @@ contract TrustlexPerAssetOrderBook {
         );
         FulfillmentRequest memory fulfillment = _fulfillment;
         fulfillment.fulfillmentBy = msg.sender;
+        fulfillment.isExpired = false;
+
         if (satoshisReserved > 0) {
             require(
                 fulfillment.totalCollateralAdded > offer.collateralPer3Hours,
-                ""
+                "fulfillment.totalCollateralAdded > offer.collateralPer3Hours condition failed !"
             );
         }
         if (
@@ -229,7 +247,9 @@ contract TrustlexPerAssetOrderBook {
             // TODO: Get tokens from tokenContract
             fulfillment.collateralAddedBy = msg.sender;
         }
-        fulfillment.expiryTime = uint32(block.timestamp) + 3 * 60 * 60; //Adding 3 hours by Glen
+        fulfillment.expiryTime =
+            uint32(block.timestamp) +
+            fullFillmentExpiryTime; //Adding 3 hours by Glen
         // uint256 fulfillmentId = uint256(
         //     keccak256(abi.encode(fulfillment, block.timestamp))
         // );
@@ -315,6 +335,8 @@ contract TrustlexPerAssetOrderBook {
                     .quantityRequested
             );
         }
+        initializedFulfillments[offerId][fulfillmentId]
+            .paymentProofSubmitted = true;
         emit PAYMENT_SUCCESSFUL(msg.sender, offerId, fulfillmentId);
     }
 
