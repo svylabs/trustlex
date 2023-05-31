@@ -247,6 +247,12 @@ contract TrustlexPerAssetOrderBook is Ownable {
             fulfillment.collateralAddedBy = msg.sender;
         } else if (fulfillment.totalCollateralAdded > 0) {
             // TODO: Get tokens from tokenContract
+            // transfer colletaral tokens to contract
+            IERC20(compact.tokenContract).transfer(
+                address(this),
+                fulfillment.totalCollateralAdded
+            );
+
             fulfillment.collateralAddedBy = msg.sender;
         }
         fulfillment.expiryTime =
@@ -316,7 +322,11 @@ contract TrustlexPerAssetOrderBook is Ownable {
         offers[offerId].satoshisReserved -= initializedFulfillments[offerId][
             fulfillmentId
         ].quantityRequested;
+
         // Send ETH / TOKEN on success
+        uint256 payAmountETh = (
+            initializedFulfillments[offerId][fulfillmentId].quantityRequested
+        ) * (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
         if (compact.tokenContract == address(0x0)) {
             // (bool success, ) = (
             //     initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
@@ -325,12 +335,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
             //         .quantityRequested
             // }("");
             // calculate the respective eth amount
-            uint256 payAmountETh = (
-                initializedFulfillments[offerId][fulfillmentId]
-                    .quantityRequested
-            ) *
-                (offers[offerId].offerQuantity /
-                    offers[offerId].satoshisToReceive);
+
             bool success = payable(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
             ).send(payAmountETh);
@@ -355,17 +360,23 @@ contract TrustlexPerAssetOrderBook is Ownable {
         } else {
             initializedFulfillments[offerId][fulfillmentId]
                 .fulfilledTime = uint32(block.timestamp);
+
             IERC20(compact.tokenContract).transfer(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy,
-                initializedFulfillments[offerId][fulfillmentId]
-                    .quantityRequested
+                payAmountETh
             );
-            IERC20(compact.tokenContract).transfer(
+            // transfer colletaral tokens to collateralAddedBy
+            if (
                 initializedFulfillments[offerId][fulfillmentId]
-                    .collateralAddedBy,
-                initializedFulfillments[offerId][fulfillmentId]
-                    .totalCollateralAdded
-            );
+                    .totalCollateralAdded > 0
+            ) {
+                IERC20(compact.tokenContract).transfer(
+                    initializedFulfillments[offerId][fulfillmentId]
+                        .collateralAddedBy,
+                    initializedFulfillments[offerId][fulfillmentId]
+                        .totalCollateralAdded
+                );
+            }
         }
         initializedFulfillments[offerId][fulfillmentId]
             .paymentProofSubmitted = true;
