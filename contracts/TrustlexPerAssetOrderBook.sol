@@ -180,6 +180,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
         offer.bitcoinAddress = bitcoinAddress;
         offer.offerValidTill = offerValidTill;
         offer.offeredBlockNumber = uint32(block.number);
+        offer.orderedTime = uint32(block.timestamp);
         uint256 offerId = compact.totalOrdersInOrderBook;
         offers[offerId] = offer;
         emit NEW_OFFER(msg.sender, offerId);
@@ -323,6 +324,9 @@ contract TrustlexPerAssetOrderBook is Ownable {
             fulfillmentId
         ].quantityRequested;
 
+        initializedFulfillments[offerId][fulfillmentId].fulfilledTime = uint32(
+            block.timestamp
+        );
         // Send ETH / TOKEN on success
         uint256 payAmountETh = (
             initializedFulfillments[offerId][fulfillmentId].quantityRequested
@@ -358,9 +362,6 @@ contract TrustlexPerAssetOrderBook is Ownable {
                 );
             }
         } else {
-            initializedFulfillments[offerId][fulfillmentId]
-                .fulfilledTime = uint32(block.timestamp);
-
             IERC20(compact.tokenContract).transfer(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy,
                 payAmountETh
