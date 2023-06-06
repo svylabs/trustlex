@@ -34,6 +34,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
         uint64 satoshisReserved;
         uint8 collateralPer3Hours;
         uint256[] fulfillmentRequests;
+        bool isCanceled;
     }
 
     struct ResultOffer {
@@ -72,6 +73,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
         uint256 indexed offerId,
         uint256 indexed fulfillmentId
     );
+    event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
+    event OfferCancelEvent(uint256 offerId);
 
     constructor(address _tokenContract) {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
@@ -149,6 +152,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
         offer.offerValidTill = offerValidTill;
         offer.offeredBlockNumber = uint32(block.number);
         offer.orderedTime = uint32(block.timestamp);
+        offer.isCanceled = false;
 
         uint256 offerId = compact.totalOrdersInOrderBook;
         offers[offerId] = offer;
@@ -181,6 +185,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
         offer.offerValidTill = offerValidTill;
         offer.offeredBlockNumber = uint32(block.number);
         offer.orderedTime = uint32(block.timestamp);
+        offer.isCanceled = false;
+
         uint256 offerId = compact.totalOrdersInOrderBook;
         offers[offerId] = offer;
         emit NEW_OFFER(msg.sender, offerId);
@@ -388,7 +394,35 @@ contract TrustlexPerAssetOrderBook is Ownable {
 
     function addTokenCollateral() public payable {}
 
-    function extendOffer() public {}
+    function extendOffer(uint256 offerId, uint32 offerValidTill) public {
+        require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
+        offers[offerId].offerValidTill =
+            offers[offerId].offerValidTill +
+            offerValidTill;
+        emit OfferExtendedEvent(offerId, offerValidTill);
+    }
+
+    function cancelOffer(uint256 offerId) public payable {
+        require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
+        CompactMetadata memory compact = deconstructMetadata();
+        offers[offerId].isCanceled = true;
+
+        Offer memory offer = offers[offerId];
+        uint64 satoshisToReceive = offer.satoshisToReceive;
+        uint64 satoshisReserved = offer.satoshisReserved;
+        uint64 satoshisReceived = offer.satoshisReceived;
+        address offeredBy = offer.offeredBy;
+        uint64 returnAbleAmount = satoshisToReceive -
+            (satoshisReserved + satoshisReceived);
+        if (compact.tokenContract == address(0x0)) {
+            bool success = payable(offeredBy).send(returnAbleAmount);
+            require(success, "Transfer failed");
+        } else {
+            IERC20(compact.tokenContract).transfer(offeredBy, returnAbleAmount);
+        }
+
+        emit OfferCancelEvent(offerId);
+    }
 
     function liquidateCollateral() public payable {}
 
