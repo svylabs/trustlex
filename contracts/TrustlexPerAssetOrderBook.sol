@@ -34,6 +34,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
         uint64 satoshisReserved;
         uint8 collateralPer3Hours;
         uint256[] fulfillmentRequests;
+        bool isCanceled;
     }
 
     struct ResultOffer {
@@ -72,12 +73,14 @@ contract TrustlexPerAssetOrderBook is Ownable {
         uint256 indexed offerId,
         uint256 indexed fulfillmentId
     );
+    event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
+    event OfferCancelEvent(uint256 offerId);
 
     constructor(address _tokenContract) {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-        fullFillmentExpiryTime = 1 * 60;
+        fullFillmentExpiryTime = 3 * 60 * 60;
     }
 
     function deconstructMetadata()
@@ -149,6 +152,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
         offer.offerValidTill = offerValidTill;
         offer.offeredBlockNumber = uint32(block.number);
         offer.orderedTime = uint32(block.timestamp);
+        offer.isCanceled = false;
 
         uint256 offerId = compact.totalOrdersInOrderBook;
         offers[offerId] = offer;
@@ -180,6 +184,9 @@ contract TrustlexPerAssetOrderBook is Ownable {
         offer.bitcoinAddress = bitcoinAddress;
         offer.offerValidTill = offerValidTill;
         offer.offeredBlockNumber = uint32(block.number);
+        offer.orderedTime = uint32(block.timestamp);
+        offer.isCanceled = false;
+
         uint256 offerId = compact.totalOrdersInOrderBook;
         offers[offerId] = offer;
         emit NEW_OFFER(msg.sender, offerId);
@@ -207,7 +214,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
                 ][fulfillmentIds[index]];
             if (
                 existingFulfillmentRequest.expiryTime < block.timestamp &&
-                existingFulfillmentRequest.isExpired == false
+                existingFulfillmentRequest.isExpired == false &&
+                existingFulfillmentRequest.paymentProofSubmitted == false
             ) {
                 // TODO: Claim any satoshis reserved
                 offer.satoshisReserved -= existingFulfillmentRequest
@@ -243,8 +251,15 @@ contract TrustlexPerAssetOrderBook is Ownable {
             compact.tokenContract == address(0x0)
         ) {
             fulfillment.totalCollateralAdded = msg.value;
+            fulfillment.collateralAddedBy = msg.sender;
         } else if (fulfillment.totalCollateralAdded > 0) {
             // TODO: Get tokens from tokenContract
+            // transfer colletaral tokens to contract
+            IERC20(compact.tokenContract).transfer(
+                address(this),
+                fulfillment.totalCollateralAdded
+            );
+
             fulfillment.collateralAddedBy = msg.sender;
         }
         fulfillment.expiryTime =
@@ -301,13 +316,27 @@ contract TrustlexPerAssetOrderBook is Ownable {
             initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0,
             "fulfilledTime should be 0"
         );
+        // add  check whether order is expired or not
+        require(
+            initializedFulfillments[offerId][fulfillmentId].expiryTime >=
+                block.timestamp,
+            "Order is exired"
+        );
+
         offers[offerId].satoshisReceived += initializedFulfillments[offerId][
             fulfillmentId
         ].quantityRequested;
         offers[offerId].satoshisReserved -= initializedFulfillments[offerId][
             fulfillmentId
         ].quantityRequested;
+
+        initializedFulfillments[offerId][fulfillmentId].fulfilledTime = uint32(
+            block.timestamp
+        );
         // Send ETH / TOKEN on success
+        uint256 payAmountETh = (
+            initializedFulfillments[offerId][fulfillmentId].quantityRequested
+        ) * (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
         if (compact.tokenContract == address(0x0)) {
             // (bool success, ) = (
             //     initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
@@ -316,24 +345,45 @@ contract TrustlexPerAssetOrderBook is Ownable {
             //         .quantityRequested
             // }("");
             // calculate the respective eth amount
-            uint256 payAmountETh = (
-                initializedFulfillments[offerId][fulfillmentId]
-                    .quantityRequested
-            ) *
-                (offers[offerId].offerQuantity /
-                    offers[offerId].satoshisToReceive);
+
             bool success = payable(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
             ).send(payAmountETh);
             require(success, "Transfer failed");
+
+            if (
+                initializedFulfillments[offerId][fulfillmentId]
+                    .totalCollateralAdded > 0
+            ) {
+                bool successPaymentToRequester = payable(
+                    initializedFulfillments[offerId][fulfillmentId]
+                        .collateralAddedBy
+                ).send(
+                        initializedFulfillments[offerId][fulfillmentId]
+                            .totalCollateralAdded
+                    );
+                require(
+                    successPaymentToRequester,
+                    "Payment Failed to collateralAddedBy"
+                );
+            }
         } else {
-            initializedFulfillments[offerId][fulfillmentId]
-                .fulfilledTime = uint32(block.timestamp);
             IERC20(compact.tokenContract).transfer(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy,
-                initializedFulfillments[offerId][fulfillmentId]
-                    .quantityRequested
+                payAmountETh
             );
+            // transfer colletaral tokens to collateralAddedBy
+            if (
+                initializedFulfillments[offerId][fulfillmentId]
+                    .totalCollateralAdded > 0
+            ) {
+                IERC20(compact.tokenContract).transfer(
+                    initializedFulfillments[offerId][fulfillmentId]
+                        .collateralAddedBy,
+                    initializedFulfillments[offerId][fulfillmentId]
+                        .totalCollateralAdded
+                );
+            }
         }
         initializedFulfillments[offerId][fulfillmentId]
             .paymentProofSubmitted = true;
@@ -344,7 +394,35 @@ contract TrustlexPerAssetOrderBook is Ownable {
 
     function addTokenCollateral() public payable {}
 
-    function extendOffer() public {}
+    function extendOffer(uint256 offerId, uint32 offerValidTill) public {
+        require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
+        offers[offerId].offerValidTill =
+            offers[offerId].offerValidTill +
+            offerValidTill;
+        emit OfferExtendedEvent(offerId, offerValidTill);
+    }
+
+    function cancelOffer(uint256 offerId) public payable {
+        require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
+        CompactMetadata memory compact = deconstructMetadata();
+        offers[offerId].isCanceled = true;
+
+        Offer memory offer = offers[offerId];
+        uint64 satoshisToReceive = offer.satoshisToReceive;
+        uint64 satoshisReserved = offer.satoshisReserved;
+        uint64 satoshisReceived = offer.satoshisReceived;
+        address offeredBy = offer.offeredBy;
+        uint64 returnAbleAmount = satoshisToReceive -
+            (satoshisReserved + satoshisReceived);
+        if (compact.tokenContract == address(0x0)) {
+            bool success = payable(offeredBy).send(returnAbleAmount);
+            require(success, "Transfer failed");
+        } else {
+            IERC20(compact.tokenContract).transfer(offeredBy, returnAbleAmount);
+        }
+
+        emit OfferCancelEvent(offerId);
+    }
 
     function liquidateCollateral() public payable {}
 
