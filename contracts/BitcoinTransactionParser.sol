@@ -1,30 +1,11 @@
 pragma solidity ^0.8.0;
 
 contract BitcoinTransactionParser {
-    struct TransactionInput {
-        bytes32 prevTransactionHash;
-        uint outputIndex;
-        bytes scriptSig;
-        uint sequence;
-    }
 
-    struct TransactionOutput {
-        uint value;
-        bytes scriptPubKey;
-    }
-
-    struct ParsedTransaction {
-        uint version;
-        uint lockTime;
-        TransactionInput[10] inputs;
-        TransactionOutput[10] outputs;
-    }
-    
     function hasOutput(bytes calldata transactionData, uint256 value, bytes calldata scriptPubKey) external pure returns (bool) {
         uint offset = 0;
-        ParsedTransaction memory parsedTx;
-        parsedTx.version = parseUint32LE(transactionData, offset);
-        offset += 4;
+        //parsedTx.version = parseUint32LE(transactionData, offset);
+        offset += 4; // increment version
         bool found = false;
     
         uint inputsCount;
@@ -32,13 +13,13 @@ contract BitcoinTransactionParser {
         require(inputsCount == 1, "Input counts is not 1");
 
         for (uint i = 0; i < inputsCount; i++) {
-            TransactionInput memory input;
+            //TransactionInput memory input;
 
             //input.prevTransactionHash = bytes32(transactionData[offset: offset+32]);
-            offset += 32;
+            offset += 32; // prevHash
 
             //input.outputIndex = parseUint32LE(transactionData, offset);
-            offset += 4;
+            offset += 4; // outputIndex
 
             uint scriptSigLength;
             (scriptSigLength, offset) = parseVarInt(transactionData, offset);
@@ -49,7 +30,7 @@ contract BitcoinTransactionParser {
             //input.sequence = parseUint32LE(transactionData, offset);
             offset += 4;
 
-            parsedTx.inputs[i] = input;
+            //parsedTx.inputs[i] = input;
         }
 
         uint outputsCount;
@@ -57,27 +38,22 @@ contract BitcoinTransactionParser {
         require(outputsCount == 2, "Output counts is not 2");
 
         for (uint i = 0; i < outputsCount; i++) {
-            TransactionOutput memory output;
+            //TransactionOutput memory output;
 
-            output.value = parseUint64LE(transactionData, offset);
+            uint256 outputValue = parseUint64LE(transactionData, offset);
             offset += 8;
 
             uint scriptPubKeyLength;
             (scriptPubKeyLength, offset) = parseVarInt(transactionData, offset);
 
-            output.scriptPubKey = transactionData[offset: offset + scriptPubKeyLength];
-            if (keccak256(output.scriptPubKey) == keccak256(scriptPubKey) && output.value >= value) {
+            bytes memory outputScriptPubKey = transactionData[offset: offset + scriptPubKeyLength];
+            if (keccak256(outputScriptPubKey) == keccak256(scriptPubKey) && outputValue >= value) {
                 // output is found and has the required value
                 found = true;
             }
             offset += scriptPubKeyLength;
 
-            parsedTx.outputs[i] = output;
-        }
-
-        parsedTx.lockTime = parseUint32LE(transactionData, offset);
-        if (parsedTx.lockTime > 0) {
-            found = false;
+            //parsedTx.outputs[i] = output;
         }
 
         return found;
@@ -128,40 +104,5 @@ contract BitcoinTransactionParser {
 
         return value;
     }
-
-    function checkOutputExists(bytes calldata transactionData, uint outputIndex) public pure returns (bool) {
-        uint offset;
-
-        // Skip the version
-        offset += 4;
-
-        uint inputsCount;
-        (inputsCount, offset) = parseVarInt(transactionData, offset);
-
-        // Skip the inputs
-        offset += inputsCount;
-
-        uint outputsCount;
-        (outputsCount, offset) = parseVarInt(transactionData, offset);
-
-        // Check if the specified output index is within bounds
-        if (outputIndex >= outputsCount) {
-            return false;
-        }
-
-        // Skip the outputs
-        for (uint i = 0; i < outputsCount; i++) {
-            uint scriptPubKeyLength;
-            (scriptPubKeyLength, offset) = parseVarInt(transactionData, offset);
-            offset += scriptPubKeyLength;
-
-            // If the output index matches the specified index, return true
-            if (i == outputIndex) {
-                return true;
-            }
-        }
-
-        // Output not found
-        return false;
-    }
+    
 }
