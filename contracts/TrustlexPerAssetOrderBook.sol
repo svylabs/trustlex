@@ -80,7 +80,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-        fullFillmentExpiryTime = 3 * 60 * 60;
+        // fullFillmentExpiryTime = 3 * 60 * 60;
+        fullFillmentExpiryTime = 2 * 60;
     }
 
     function deconstructMetadata()
@@ -338,14 +339,6 @@ contract TrustlexPerAssetOrderBook is Ownable {
             initializedFulfillments[offerId][fulfillmentId].quantityRequested
         ) * (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
         if (compact.tokenContract == address(0x0)) {
-            // (bool success, ) = (
-            //     initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
-            // ).call{
-            //     value: initializedFulfillments[offerId][fulfillmentId]
-            //         .quantityRequested
-            // }("");
-            // calculate the respective eth amount
-
             bool success = payable(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
             ).send(payAmountETh);
@@ -412,13 +405,41 @@ contract TrustlexPerAssetOrderBook is Ownable {
         uint64 satoshisReserved = offer.satoshisReserved;
         uint64 satoshisReceived = offer.satoshisReceived;
         address offeredBy = offer.offeredBy;
-        uint64 returnAbleAmount = satoshisToReceive -
+        require(offeredBy == msg.sender, "Offer creator can only cancel offer");
+
+        // Update satoshisReserved amount  for expired order
+
+        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
+        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+            FulfillmentRequest
+                memory existingFulfillmentRequest = initializedFulfillments[
+                    offerId
+                ][fulfillmentIds[index]];
+            if (
+                existingFulfillmentRequest.expiryTime < block.timestamp &&
+                existingFulfillmentRequest.isExpired == false &&
+                existingFulfillmentRequest.paymentProofSubmitted == false
+            ) {
+                // Decrease the off satoshi resvered amou t for expired
+                offer.satoshisReserved -= existingFulfillmentRequest
+                    .quantityRequested;
+
+                initializedFulfillments[offerId][fulfillmentIds[index]]
+                    .isExpired = true;
+            }
+        }
+        satoshisReserved = offer.satoshisReserved;
+
+        uint64 returnAbleAmountSatoshi = satoshisToReceive -
             (satoshisReserved + satoshisReceived);
+        uint256 payAmount = (returnAbleAmountSatoshi) *
+            (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
+
         if (compact.tokenContract == address(0x0)) {
-            bool success = payable(offeredBy).send(returnAbleAmount);
+            bool success = payable(offeredBy).send(payAmount);
             require(success, "Transfer failed");
         } else {
-            IERC20(compact.tokenContract).transfer(offeredBy, returnAbleAmount);
+            IERC20(compact.tokenContract).transfer(offeredBy, payAmount);
         }
 
         emit OfferCancelEvent(offerId);
