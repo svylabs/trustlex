@@ -80,8 +80,7 @@ contract TrustlexPerAssetOrderBook is Ownable {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-        // fullFillmentExpiryTime = 3 * 60 * 60;
-        fullFillmentExpiryTime = 2 * 60;
+        fullFillmentExpiryTime = 3 * 60 * 60;
     }
 
     function deconstructMetadata()
