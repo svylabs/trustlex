@@ -2,6 +2,25 @@ pragma solidity ^0.8.0;
 
 contract BitcoinTransactionParser {
 
+    //04100000007576a914000000000000000000000000000000000000000088ac
+
+    function getTrustlexOutput(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTimestamp) public pure returns (bytes memory) {
+        bytes32 orderId = keccak256(abi.encodePacked(contractId, orderId, fulfillmentId, pubkeyHash, orderTimestamp));
+        bytes4 shortOrderId = bytes4(orderId);
+        // ORDER_ID OP_DROP OP_DUP OP_HASH160 <pubkeyHash> OP_EQUAL_VERIFY OP_CHECK_SIG
+        bytes memory script = abi.encodePacked(
+            bytes1(0x04), // length of order id
+            shortOrderId,
+            bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH
+            pubkeyHash,
+            bytes2(0x88ac) // OP_EQUALVERIFY OP_CHECKSIG
+        );
+        return abi.encodePacked(
+            bytes2(0x0020), 
+            sha256(script)
+        );
+    }
+
     function hasOutput(bytes calldata transactionData, uint256 value, bytes calldata scriptPubKey) external pure returns (bool) {
         uint offset = 0;
         //parsedTx.version = parseUint32LE(transactionData, offset);
@@ -104,5 +123,5 @@ contract BitcoinTransactionParser {
 
         return value;
     }
-    
+
 }

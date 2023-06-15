@@ -21,4 +21,10 @@ contract('BitcoinTransactionParser', (accounts) => {
     //assert.equal(parsedTx.inputs.length, 1);
     //assert.equal(parsedTx.outputs.length, 2);
   });
+
+  it('should generate trustlex output correctly', async() => {
+     const output = await parser.getTrustlexOutput('0x0000000000000000000000000000000000000000', 0, 0, '0x0000000000000000000000000000000000000000', 0);
+     assert.equal('0x00202c62b767d34b5444d2a181e3651f82cad623cb20926637258e058faf48dae585', output);
+
+  });
 });
