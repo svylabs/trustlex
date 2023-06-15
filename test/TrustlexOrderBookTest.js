@@ -1,7 +1,4 @@
 //var BitcoinUtils = artifacts.require("BitcoinUtils");
-
-
-
 //var SafeMath = artifacts.require('SafeMath');
 const trustlexapp = artifacts.require("TrustlexPerAssetOrderBook");
 
@@ -11,6 +8,10 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
     const txParams = { from: owner, value: web3.utils.toWei('10',"ether") };
     const txParams1 = { from: user1, value: web3.utils.toWei('8.5',"ether") };
     const txParams2 = { from: user2, value: web3.utils.toWei('7',"ether") };
+
+    const txParams3 = { from: user3, value: web3.utils.toWei('10',"ether") };
+    const txParams4 = { from: user4, value: web3.utils.toWei('15',"ether") };
+    const txParams5 = { from: user5, value: web3.utils.toWei('20',"ether") };
     
 
     it('Create the contract for order with ETH',async function(){
@@ -40,6 +41,7 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         this.offer1Id = res.logs[0].args["1"];
         this.offer2Id = res1.logs[0].args["1"];
         this.offer3Id = res2.logs[0].args["1"];
+        
 
         let offer1Details = await this.trustlexappcontract.getOffer(this.offer1Id);
         let offer2Details = await this.trustlexappcontract.getOffer(this.offer2Id);
@@ -550,5 +552,89 @@ contract("Create TrustlexOrderBookContract", (accounts) => {
         const MyoffersList = await Promise.all(MyOffersPromises);
         console.log('All completed offers',MyoffersList)
     });
+
+    it("cancel offer",async function(){
+        // Take two users and get the balance
+        let user3Balance = await web3.eth.getBalance(user3);
+        user3Balance = web3.utils.fromWei(user3Balance,"ether")
+        console.log(user3,user3Balance)
+        
+        // first create two offers
+        let offer1SatoshisToReceive = 1*(10**8); //1 BTC
+        //function addOfferWithEth(uint64 satoshis, bytes20 bitcoinAddress, uint32 offerValidTill) public payable {
+        let res = await this.trustlexappcontract.addOfferWithEth(
+            txParams3.value,//WEIETH // value 10ETH
+            offer1SatoshisToReceive, //satoshis
+            "0x0000000000000000000000000000000000000000", //bitcoinAddress
+            (parseInt(new Date().getTime() / 1000) + 7 * 24 * 60 * 60),//offerValidTill
+            txParams3
+        );
+        let offer1Id = res.logs[0].args["1"];
+        
+        // get the first user balance
+        let user3Balance_ = await web3.eth.getBalance(user3);
+        user3Balance_ = web3.utils.fromWei(user3Balance_,"ether")
+        console.log(user3,user3Balance_)    
+        
+        // cancel the first offer
+        let offer1Result = await this.trustlexappcontract.cancelOffer(offer1Id, { from: user3});
+
+        // get the first user balance
+        user3Balance_ = await web3.eth.getBalance(user3);
+        user3Balance_ = web3.utils.fromWei(user3Balance_,"ether")
+        console.log(user3,user3Balance_)    
+
+        let user4Balance = await web3.eth.getBalance(user4);
+        user4Balance = web3.utils.fromWei(user4Balance,"ether")
+        console.log(user4,user4Balance)
+
+        // create the another offer
+        let res2 = await this.trustlexappcontract.addOfferWithEth(
+            txParams4.value,//WEIETH // value 15 ETH
+            90000000, //satoshis  0.9 BTC
+            '0x0000000000000000000000000000000000000000',//bitcoinAddress
+            (parseInt((new Date).getTime() / 1000) + 6 * 24 * 60 * 60), //offerValidTill
+            txParams4);
+
+        let user4Balance_ = await web3.eth.getBalance(user4);
+        user4Balance_ = web3.utils.fromWei(user4Balance_,"ether")
+        console.log(user4,user4Balance_)
+          
+        let offer2Id = res2.logs[0].args["1"];  
+
+        // initaiete the offer for offer two
+        this.totalFulfillmentRequests = 0;     
+        let quantityRequested = 0.5*(10**8);// 1 BTC
+        
+        let initiateFulfillmentRes2 = await this.trustlexappcontract.initiateFulfillment(
+            offer2Id, 
+            {
+                fulfillmentBy: user5, 
+                quantityRequested: quantityRequested, 
+                allowAnyoneToSubmitPaymentProofForFee: true, 
+                allowAnyoneToAddCollateralForFee: true, 
+                totalCollateralAdded: 0, 
+                expiryTime: 0, 
+                fulfilledTime: 0, 
+                collateralAddedBy: '0x0000000000000000000000000000000000000000',
+                paymentProofSubmitted:false,
+            }, 
+            {from: user5}
+        );
+        await timeout(20000);
+        
+
+        // cancel the offer two
+        let offer2Result = await this.trustlexappcontract.cancelOffer(offer2Id, { from: user4});
+        // check the balance of user two
+        
+        let user4Balance_2 = await web3.eth.getBalance(user4);
+        user4Balance_2 = web3.utils.fromWei(user4Balance_2,"ether")
+        console.log(user4,user4Balance_2)
+    
+    })
+    function timeout(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 })
 

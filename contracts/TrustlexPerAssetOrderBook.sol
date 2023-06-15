@@ -6,6 +6,14 @@ import {BitcoinUtils} from "./BitcoinUtils.sol";
 import {IERC20} from "./IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+// Error handling to check wether  _fulfillment.quantityRequested can be intiated or not
+error ValidateOfferQuantity(
+    uint64 satoshisToReceive,
+    uint64 satoshisReserved,
+    uint64 satoshisReceived,
+    uint64 quantityRequested
+);
+
 contract TrustlexPerAssetOrderBook is Ownable {
     IERC20 public MyTokenERC20;
     uint32 public fullFillmentExpiryTime;
@@ -229,13 +237,26 @@ contract TrustlexPerAssetOrderBook is Ownable {
         satoshisReserved = offer.satoshisReserved;
         // }
 
-        require(
-            satoshisToReceive >=
+        // require(
+        //     satoshisToReceive >=
+        //         (satoshisReserved +
+        //             satoshisReceived +
+        //             _fulfillment.quantityRequested),
+        //     "satoshisToReceive is not equal or greater than sum of satoshisReserved amount ,satoshisReceived, current requested quanity"
+        // );
+        if (
+            !(satoshisToReceive >=
                 (satoshisReserved +
                     satoshisReceived +
-                    _fulfillment.quantityRequested),
-            "satoshisToReceive is not equal or greater than sum of satoshisReserved amount ,satoshisReceived, current requested quanity"
-        );
+                    _fulfillment.quantityRequested))
+        ) {
+            revert ValidateOfferQuantity({
+                satoshisToReceive: satoshisToReceive,
+                satoshisReserved: satoshisReserved,
+                satoshisReceived: satoshisReceived,
+                quantityRequested: _fulfillment.quantityRequested
+            });
+        }
         FulfillmentRequest memory fulfillment = _fulfillment;
         fulfillment.fulfillmentBy = msg.sender;
         fulfillment.isExpired = false;
@@ -338,14 +359,6 @@ contract TrustlexPerAssetOrderBook is Ownable {
             initializedFulfillments[offerId][fulfillmentId].quantityRequested
         ) * (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
         if (compact.tokenContract == address(0x0)) {
-            // (bool success, ) = (
-            //     initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
-            // ).call{
-            //     value: initializedFulfillments[offerId][fulfillmentId]
-            //         .quantityRequested
-            // }("");
-            // calculate the respective eth amount
-
             bool success = payable(
                 initializedFulfillments[offerId][fulfillmentId].fulfillmentBy
             ).send(payAmountETh);
@@ -405,21 +418,74 @@ contract TrustlexPerAssetOrderBook is Ownable {
     function cancelOffer(uint256 offerId) public payable {
         require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
         CompactMetadata memory compact = deconstructMetadata();
-        offers[offerId].isCanceled = true;
 
         Offer memory offer = offers[offerId];
         uint64 satoshisToReceive = offer.satoshisToReceive;
         uint64 satoshisReserved = offer.satoshisReserved;
         uint64 satoshisReceived = offer.satoshisReceived;
         address offeredBy = offer.offeredBy;
-        uint64 returnAbleAmount = satoshisToReceive -
-            (satoshisReserved + satoshisReceived);
+        require(offeredBy == msg.sender, "Offer creator can only cancel offer");
+        uint64 returnAbleAmountSatoshi;
+
+        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
+        uint256 payAmount;
+        // if offer has no fullfillment orders
+        if (fulfillmentIds.length == 0) {
+            returnAbleAmountSatoshi = satoshisToReceive;
+            offers[offerId].isCanceled = true;
+            payAmount =
+                (returnAbleAmountSatoshi) *
+                (offers[offerId].offerQuantity /
+                    offers[offerId].satoshisToReceive);
+        } else {
+            // if offer has  fullfillments order
+
+            // Update satoshisReserved amount  for expired order
+            for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+                FulfillmentRequest
+                    memory existingFulfillmentRequest = initializedFulfillments[
+                        offerId
+                    ][fulfillmentIds[index]];
+                if (
+                    existingFulfillmentRequest.expiryTime < block.timestamp &&
+                    existingFulfillmentRequest.isExpired == false &&
+                    existingFulfillmentRequest.paymentProofSubmitted == false
+                ) {
+                    // Decrease the off satoshi resvered amou t for expired
+                    offer.satoshisReserved -= existingFulfillmentRequest
+                        .quantityRequested;
+
+                    initializedFulfillments[offerId][fulfillmentIds[index]]
+                        .isExpired = true;
+                }
+            }
+            satoshisReserved = offer.satoshisReserved;
+
+            returnAbleAmountSatoshi =
+                satoshisToReceive -
+                (satoshisReserved + satoshisReceived);
+
+            satoshisToReceive -= returnAbleAmountSatoshi;
+
+            payAmount =
+                (returnAbleAmountSatoshi) *
+                (offers[offerId].offerQuantity /
+                    offers[offerId].satoshisToReceive);
+
+            offers[offerId].satoshisReserved = satoshisReserved;
+            offers[offerId].satoshisToReceive = satoshisToReceive;
+            // decrease the offer quantity
+            offers[offerId].offerQuantity -= payAmount;
+        }
+
         if (compact.tokenContract == address(0x0)) {
-            bool success = payable(offeredBy).send(returnAbleAmount);
+            bool success = payable(offeredBy).send(payAmount);
             require(success, "Transfer failed");
         } else {
-            IERC20(compact.tokenContract).transfer(offeredBy, returnAbleAmount);
+            IERC20(compact.tokenContract).transfer(offeredBy, payAmount);
         }
+
+        // update the
 
         emit OfferCancelEvent(offerId);
     }
