@@ -4,18 +4,59 @@ contract BitcoinTransactionParser {
 
     //04100000007576a914000000000000000000000000000000000000000088ac
 
-    function getTrustlexOutput(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTimestamp) public pure returns (bytes memory) {
-        bytes32 orderId = keccak256(abi.encodePacked(contractId, orderId, fulfillmentId, pubkeyHash, orderTimestamp));
-        bytes4 shortOrderId = bytes4(orderId);
+    function getTrustlexScript(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTime) public pure returns (bytes memory) {
+        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderId), bytes32(fulfillmentId), pubkeyHash, bytes32(orderTime)));
+        bytes4 shortOrderId = bytes4(hashedOrderId);
         // ORDER_ID OP_DROP OP_DUP OP_HASH160 <pubkeyHash> OP_EQUAL_VERIFY OP_CHECK_SIG
-        bytes memory script = abi.encodePacked(
+        bytes memory script = bytes.concat(
             bytes1(0x04), // length of order id
             shortOrderId,
             bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH
             pubkeyHash,
             bytes2(0x88ac) // OP_EQUALVERIFY OP_CHECKSIG
         );
-        return abi.encodePacked(
+        return bytes.concat(
+            bytes2(0x0020), 
+            sha256(script)
+        );
+    }
+
+    // 
+    /* Buffer.from(shortOrderId, 'hex'),
+   / bitcoin.opcodes.OP_DROP,
+    bitcoin.opcodes.OP_DUP,
+    bitcoin.opcodes.OP_HASH160,
+    Buffer.from("0000000000000000000000000000000000000000", 'hex'),
+    bitcoin.opcodes.OP_EQUAL,
+    bitcoin.opcodes.OP_NOTIF,
+    ff, // populate the future timestamp or future block number here
+    bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,
+    bitcoin.opcodes.OP_DROP,
+    bitcoin.opcodes.OP_DUP, // should duplicate public key
+    bitcoin.opcodes.OP_HASH160,
+    Buffer.from("0000000000000000000000000000000000000000", "hex"),
+    bitcoin.opcodes.OP_EQUALVERIFY,
+    bitcoin.opcodes.OP_ENDIF,
+    bitcoin.opcodes.OP_CHECKSIG,
+    043a5912a77576a9140000000000000000000000000000000000000000876401ffb17576a91400000000000000000000000000000000000000008868ac
+    */
+
+    function getTrustlexScriptV1(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTime, bytes20 redeemerPubkeyHash, uint32 lockTime) public pure returns (bytes memory) {
+        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderId), bytes32(fulfillmentId), pubkeyHash, bytes32(orderTime)));
+        bytes4 shortOrderId = bytes4(hashedOrderId);
+        // ORDER_ID OP_DROP OP_DUP OP_HASH160 <pubkeyHash> OP_EQUAL_VERIFY OP_CHECK_SIG
+        bytes memory script = bytes.concat(
+            bytes1(0x04), // length of order id
+            shortOrderId, 
+            bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH:
+            pubkeyHash,
+            bytes3(0x876404),
+            bytes4(uint32(lockTime)), // timestamp
+            bytes5(0xb17576a914), // OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP  OP_HASH160 LENGTH_OF_PUBKEY_HASH
+            bytes20(redeemerPubkeyHash), // Redeemer public key
+            bytes3(0x8868ac) // OP_EQUALVERIFYOP_ENDIF OP_CHECKSIG
+        );
+        return bytes.concat(
             bytes2(0x0020), 
             sha256(script)
         );

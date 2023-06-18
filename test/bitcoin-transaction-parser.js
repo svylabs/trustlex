@@ -23,8 +23,26 @@ contract('BitcoinTransactionParser', (accounts) => {
   });
 
   it('should generate trustlex output correctly', async() => {
-     const output = await parser.getTrustlexOutput('0x0000000000000000000000000000000000000000', 0, 0, '0x0000000000000000000000000000000000000000', 0);
+     const output = await parser.getTrustlexScript('0x0000000000000000000000000000000000000000', 
+        0, 
+        0, 
+        '0x0000000000000000000000000000000000000000', 
+        0
+     );
      assert.equal('0x00202c62b767d34b5444d2a181e3651f82cad623cb20926637258e058faf48dae585', output);
-
   });
+
+
+  it('should generate trustlex v1 output correctly', async() => {
+    //console.log(parseInt('0x0fffffff', 16));
+    const output = await parser.getTrustlexScriptV1('0x0000000000000000000000000000000000000000', 
+        0, 
+        0, 
+        '0x0000000000000000000000000000000000000000', 
+        0, 
+        '0x0000000000000000000000000000000000000000', 
+        parseInt('0x0fffffff', 16)
+    );
+    assert.equal('0x00209e176d8b94322f4554540d16bea20d114b1562257b189483df09f282e2ca8e23', output);
+ });
 });
