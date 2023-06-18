@@ -3,7 +3,7 @@ pragma solidity >=0.4.22 <0.9.0;
 import {ITxVerifier} from './ISPVChain.sol';
 import {BitcoinUtils} from './BitcoinUtils.sol';
 
-contract TestBitcoinSPVChain is ITxVerifier {
+contract TrustedBitcoinSPVChain is ITxVerifier {
 
     address owner;
 
