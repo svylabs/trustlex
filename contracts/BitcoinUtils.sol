@@ -148,5 +148,16 @@ library BitcoinUtils {
         uint256 _adjusted = _previousTarget.div(65536).mul(_elapsedTime);
         return _adjusted.div(RETARGET_PERIOD).mul(65536);
     }
+
+    function _sha256d(bytes calldata bz) internal view returns (bytes32 result) {
+        assembly {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, bz.offset, 0x50)
+            let res := mload(0x40)
+            pop(staticcall(gas(), 2, ptr, 0x50, res, 0x20))
+            pop(staticcall(gas(), 2, res, 0x20, res, 0x20))
+            result := mload(res)
+        }
+    }
     
 }

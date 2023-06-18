@@ -1,10 +1,10 @@
-const BitcoinTransactionParser = artifacts.require('BitcoinTransactionParser');
+const BitcoinTransactionUtils = artifacts.require('BitcoinTransactionUtils');
 
 contract('BitcoinTransactionParser', (accounts) => {
   let parser;
 
   before(async () => {
-    parser = await BitcoinTransactionParser.new();
+    parser = await BitcoinTransactionUtils.new();
   });
 
   it('should parse a Bitcoin transaction', async () => {

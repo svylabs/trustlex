@@ -3,6 +3,7 @@ pragma solidity >=0.4.22 <0.9.0;
 import {SafeMath} from "./SafeMath.sol";
 import {ITxVerifier} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
+import {BitcoinTransactionUtils} from "./BitcoinTransactionUtils.sol";
 import {IERC20} from "./IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -62,6 +63,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
 
     uint256 public orderBookCompactMetadata;
 
+    address public txInclusionVerifierContract;
+
     // mapping(uint256 offerId => mapping(uint256 fullfillmentId => FulfillmentRequest fullfillmentData))
     mapping(uint256 => mapping(uint256 => FulfillmentRequest))
         public initializedFulfillments;
@@ -84,11 +87,12 @@ contract TrustlexPerAssetOrderBook is Ownable {
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
     event OfferCancelEvent(uint256 offerId);
 
-    constructor(address _tokenContract) {
+    constructor(address _tokenContract, address txInclusionVerifier) {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
         fullFillmentExpiryTime = 3 * 60 * 60;
+        txInclusionVerifierContract = txInclusionVerifier;
     }
 
     function deconstructMetadata()
@@ -324,15 +328,22 @@ contract TrustlexPerAssetOrderBook is Ownable {
         return resultFulfillmentRequest;
     }
 
+    struct PaymentProof {
+        bytes transaction;
+        bytes proof;
+        uint32 index;
+        uint32 blockHeight;
+    }
+
     /*
        validate transaction  and pay all involved parties
     */
     function submitPaymentProof(
         uint256 offerId,
-        uint256 fulfillmentId // bytes calldata transaction, // bytes calldata proof, // uint32 blockHeight
-    ) public {
+        uint256 fulfillmentId,
+        PaymentProof calldata proof 
+    ) external {
         CompactMetadata memory compact = deconstructMetadata();
-        // TODO: Validate  transaction here
         require(
             initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0,
             "fulfilledTime should be 0"
@@ -343,6 +354,17 @@ contract TrustlexPerAssetOrderBook is Ownable {
                 block.timestamp,
             "Order is exired"
         );
+
+        // TODO: Test all of these
+        uint256 valueRequested = initializedFulfillments[offerId][
+            fulfillmentId
+        ].quantityRequested;
+        bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScript(address(this), offerId, fulfillmentId, offers[offerId].bitcoinAddress, offers[offerId].orderedTime);
+        require(BitcoinTransactionUtils.hasOutput(proof.transaction, valueRequested, scriptOutput), "required output is not available");
+        
+        bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
+        require(ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(txId, proof.blockHeight, proof.index, proof.proof), "Invalid tx inclusion proof");
+        
 
         offers[offerId].satoshisReceived += initializedFulfillments[offerId][
             fulfillmentId

@@ -1,5 +1,5 @@
-const BitcoinTransactionParser = artifacts.require("BitcoinTransactionParser");
+const BitcoinTransactionUtils = artifacts.require("BitcoinTransactionUtils");
 
 module.exports = function (deployer) {
-  deployer.deploy(BitcoinTransactionParser);
+  deployer.deploy(BitcoinTransactionUtils);
 };
