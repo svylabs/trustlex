@@ -1,10 +1,6 @@
 //const WalletProvider = require("truffle-wallet-provider");
-const ethjs = require('ethereumjs-wallet');
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-console.log(ethjs.default);
 
-var privateKey = Buffer.from(process.env["DEPLOY_PRIVATE_KEY"], "hex");
-var deployWallet = ethjs.default.fromPrivateKey(privateKey);
 var mumbaiNetworkProvider = new HDWalletProvider("trash bird puppy marine fever picture car under melt uniform pact number", "https://polygon-mumbai.g.alchemy.com/v2/Vcbi10AnBLRP5EAJLPk7sYs_XG6aONJp");
 
 /**
