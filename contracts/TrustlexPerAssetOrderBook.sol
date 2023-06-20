@@ -5,7 +5,6 @@ import {ITxVerifier} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
 import {BitcoinTransactionUtils} from "./BitcoinTransactionUtils.sol";
 import {IERC20} from "./IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 // Error handling to check wether  _fulfillment.quantityRequested can be intiated or not
 error ValidateOfferQuantity(
@@ -15,7 +14,7 @@ error ValidateOfferQuantity(
     uint64 quantityRequested
 );
 
-contract TrustlexPerAssetOrderBook is Ownable {
+contract TrustlexPerAssetOrderBook {
     IERC20 public MyTokenERC20;
     uint32 public fullFillmentExpiryTime;
     struct FulfillmentRequest {
@@ -114,7 +113,9 @@ contract TrustlexPerAssetOrderBook is Ownable {
         orderBookCompactMetadata = compactMeta;
     }
 
-    function setFullFillmentExpiryTime(uint32 expiryTime) public onlyOwner {
+
+    // TODO: Remove after test
+    function setFullFillmentExpiryTime(uint32 expiryTime) public {
         fullFillmentExpiryTime = expiryTime;
     }
 
