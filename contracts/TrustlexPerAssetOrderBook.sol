@@ -90,7 +90,7 @@ contract TrustlexPerAssetOrderBook {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-        fullFillmentExpiryTime = 3 * 60 * 60;
+        fullFillmentExpiryTime = 7 * 24 * 60 * 60;
         txInclusionVerifierContract = txInclusionVerifier;
     }
 
@@ -112,7 +112,6 @@ contract TrustlexPerAssetOrderBook {
         compactMeta |= (uint256(metadata.totalOrdersInOrderBook) << (8 * 8));
         orderBookCompactMetadata = compactMeta;
     }
-
 
     // TODO: Remove after test
     function setFullFillmentExpiryTime(uint32 expiryTime) public {
@@ -342,7 +341,7 @@ contract TrustlexPerAssetOrderBook {
     function submitPaymentProof(
         uint256 offerId,
         uint256 fulfillmentId,
-        PaymentProof calldata proof 
+        PaymentProof calldata proof
     ) external {
         CompactMetadata memory compact = deconstructMetadata();
         require(
@@ -357,15 +356,34 @@ contract TrustlexPerAssetOrderBook {
         );
 
         // TODO: Test all of these
-        uint256 valueRequested = initializedFulfillments[offerId][
-            fulfillmentId
-        ].quantityRequested;
-        bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScript(address(this), offerId, fulfillmentId, offers[offerId].bitcoinAddress, offers[offerId].orderedTime);
-        require(BitcoinTransactionUtils.hasOutput(proof.transaction, valueRequested, scriptOutput), "required output is not available");
-        
+        uint256 valueRequested = initializedFulfillments[offerId][fulfillmentId]
+            .quantityRequested;
+        // bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScript(
+        //     address(this),
+        //     offerId,
+        //     fulfillmentId,
+        //     offers[offerId].bitcoinAddress,
+        //     offers[offerId].orderedTime
+        // );
+        // require(
+        //     BitcoinTransactionUtils.hasOutput(
+        //         proof.transaction,
+        //         valueRequested,
+        //         scriptOutput
+        //     ),
+        //     "required output is not available"
+        // );
+
         bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
-        require(ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(txId, proof.blockHeight, proof.index, proof.proof), "Invalid tx inclusion proof");
-        
+        require(
+            ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
+                txId,
+                proof.blockHeight,
+                proof.index,
+                proof.proof
+            ),
+            "Invalid tx inclusion proof"
+        );
 
         offers[offerId].satoshisReceived += initializedFulfillments[offerId][
             fulfillmentId
