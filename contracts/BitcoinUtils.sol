@@ -150,11 +150,12 @@ library BitcoinUtils {
     }
 
     function _sha256d(bytes calldata bz) internal view returns (bytes32 result) {
+        uint256 len = bz.length;
         assembly {
             let ptr := mload(0x40)
-            calldatacopy(ptr, bz.offset, 0x50)
+            calldatacopy(ptr, bz.offset, len)
             let res := mload(0x40)
-            pop(staticcall(gas(), 2, ptr, 0x50, res, 0x20))
+            pop(staticcall(gas(), 2, ptr, len, res, 0x20))
             pop(staticcall(gas(), 2, res, 0x20, res, 0x20))
             result := mload(res)
         }

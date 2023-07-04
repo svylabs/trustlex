@@ -374,8 +374,8 @@ contract TrustlexPerAssetOrderBook {
         //     "required output is not available"
         // );
 
-        //bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
-        bytes32 txId = sha256(abi.encodePacked(sha256(proof.transaction)));
+        bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
+        //bytes32 txId = sha256(abi.encodePacked(sha256(proof.transaction)));
         require(
             ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
                 txId,
