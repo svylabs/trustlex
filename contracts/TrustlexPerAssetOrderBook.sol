@@ -78,10 +78,18 @@ contract TrustlexPerAssetOrderBook {
         uint256 indexed fulfillmentId
     );
 
+    // event PAYMENT_SUCCESSFUL(
+    //     address indexed submittedBy,
+    //     uint256 indexed offerId,
+    //     uint256 indexed fulfillmentId
+    // );
     event PAYMENT_SUCCESSFUL(
         address indexed submittedBy,
+        address indexed receivedBy, // not sure if we can have more than 3 indexed parameters. If not, we can remove the indexed from 'fulfillmentId' - think about it.
         uint256 indexed offerId,
-        uint256 indexed fulfillmentId
+        uint256  fulfillmentId,
+        bytes32 txHash, // This is the Bitcoin txHash
+        bytes32 outputHash // This will be the sha256 value of the scriptOutput
     );
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
     event OfferCancelEvent(uint256 offerId);
@@ -355,6 +363,37 @@ contract TrustlexPerAssetOrderBook {
             "Order is exired"
         );
 
+        // TODO: Test all of these
+        uint256 valueRequested = initializedFulfillments[offerId][fulfillmentId]
+            .quantityRequested;
+        bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScript(
+            address(this),
+            offerId,
+            fulfillmentId,
+            offers[offerId].bitcoinAddress,
+            offers[offerId].orderedTime
+        );
+        require(
+            BitcoinTransactionUtils.hasOutput(
+                proof.transaction,
+                valueRequested,
+                scriptOutput
+            ),
+            "required output is not available"
+        );
+
+        //bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
+        bytes32 txId = sha256(abi.encodePacked(sha256(proof.transaction)));
+        require(
+            ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
+                txId,
+                proof.blockHeight,
+                proof.index,
+                proof.proof
+            ),
+            "Invalid tx inclusion proof"
+        );
+
         offers[offerId].satoshisReceived += initializedFulfillments[offerId][
             fulfillmentId
         ].quantityRequested;
@@ -411,7 +450,16 @@ contract TrustlexPerAssetOrderBook {
         }
         initializedFulfillments[offerId][fulfillmentId]
             .paymentProofSubmitted = true;
-        emit PAYMENT_SUCCESSFUL(msg.sender, offerId, fulfillmentId);
+            
+        emit PAYMENT_SUCCESSFUL(
+            msg.sender, 
+            initializedFulfillments[offerId][fulfillmentId].fulfillmentBy,offerId, 
+            fulfillmentId,
+            txId,
+            sha256(scriptOutput)
+        );
+        
+        
     }
 
     function addEthCollateral() public payable {}

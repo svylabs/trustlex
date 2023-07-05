@@ -14,9 +14,9 @@ contract TrustedBitcoinSPVChain is ITxVerifier {
     }
 
     function AddHeader(uint256 height, bytes32 merkleRoot) external  {
-        if (msg.sender == owner) {
+        // if (msg.sender == owner) {
           merkleRoots[height] = merkleRoot;
-        }
+        // }
     }
 
     function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
