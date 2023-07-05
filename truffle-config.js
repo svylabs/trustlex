@@ -1,3 +1,8 @@
+//const WalletProvider = require("truffle-wallet-provider");
+const HDWalletProvider = require('@truffle/hdwallet-provider');
+
+var mumbaiNetworkProvider = new HDWalletProvider("trash bird puppy marine fever picture car under melt uniform pact number", "https://polygon-mumbai.g.alchemy.com/v2/Vcbi10AnBLRP5EAJLPk7sYs_XG6aONJp");
+
 /**
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
@@ -47,6 +52,10 @@
 // const HDWalletProvider = require('@truffle/hdwallet-provider');
 
 module.exports = {
+  plugins: ['truffle-plugin-verify'],
+  api_keys: {
+    etherscan: 'F1RCH4YRVPB7P52SG1RSZCTTEJ8R6XFF1T',
+  },
   /**
    * Networks define how you connect to your ethereum client and let you set the
    * defaults web3 uses to send transactions. If you don't specify one truffle
@@ -96,6 +105,17 @@ module.exports = {
     //   network_id: 2111,   // This network is yours, in the cloud.
     //   production: true    // Treats this network as if it was a public net. (default: false)
     // }
+
+    polygontestnet: {
+       provider: () => mumbaiNetworkProvider,
+       network_id: 80001,       // Goerli's id
+       confirmations: 2,    // # of confirmations to wait between deployments. (default: 0)
+       timeoutBlocks: 200,  // # of blocks before a deployment times out  (minimum/default: 50)
+       skipDryRun: true,     // Skip dry run before migrations? (default: false for public nets )
+       from: '0x0c3bBae8d11BB8E2435955ee98B917a0d3d4ebab',
+       gasPrice: 2000000000,
+       gas: 6000000
+    },
   },
 
   // Set default mocha options here, use special reporters, etc.

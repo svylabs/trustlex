@@ -3,8 +3,8 @@ pragma solidity >=0.4.22 <0.9.0;
 import {SafeMath} from "./SafeMath.sol";
 import {ITxVerifier} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
+import {BitcoinTransactionUtils} from "./BitcoinTransactionUtils.sol";
 import {IERC20} from "./IERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
 // Error handling to check wether  _fulfillment.quantityRequested can be intiated or not
 error ValidateOfferQuantity(
@@ -14,7 +14,7 @@ error ValidateOfferQuantity(
     uint64 quantityRequested
 );
 
-contract TrustlexPerAssetOrderBook is Ownable {
+contract TrustlexPerAssetOrderBook {
     IERC20 public MyTokenERC20;
     uint32 public fullFillmentExpiryTime;
     struct FulfillmentRequest {
@@ -62,6 +62,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
 
     uint256 public orderBookCompactMetadata;
 
+    address public txInclusionVerifierContract;
+
     // mapping(uint256 offerId => mapping(uint256 fullfillmentId => FulfillmentRequest fullfillmentData))
     mapping(uint256 => mapping(uint256 => FulfillmentRequest))
         public initializedFulfillments;
@@ -84,11 +86,12 @@ contract TrustlexPerAssetOrderBook is Ownable {
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
     event OfferCancelEvent(uint256 offerId);
 
-    constructor(address _tokenContract) {
+    constructor(address _tokenContract, address txInclusionVerifier) {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-        fullFillmentExpiryTime = 3 * 60 * 60;
+        fullFillmentExpiryTime = 7 * 24 * 60 * 60;
+        txInclusionVerifierContract = txInclusionVerifier;
     }
 
     function deconstructMetadata()
@@ -110,7 +113,8 @@ contract TrustlexPerAssetOrderBook is Ownable {
         orderBookCompactMetadata = compactMeta;
     }
 
-    function setFullFillmentExpiryTime(uint32 expiryTime) public onlyOwner {
+    // TODO: Remove after test
+    function setFullFillmentExpiryTime(uint32 expiryTime) public {
         fullFillmentExpiryTime = expiryTime;
     }
 
@@ -324,15 +328,22 @@ contract TrustlexPerAssetOrderBook is Ownable {
         return resultFulfillmentRequest;
     }
 
+    struct PaymentProof {
+        bytes transaction;
+        bytes proof;
+        uint32 index;
+        uint32 blockHeight;
+    }
+
     /*
        validate transaction  and pay all involved parties
     */
     function submitPaymentProof(
         uint256 offerId,
-        uint256 fulfillmentId // bytes calldata transaction, // bytes calldata proof, // uint32 blockHeight
-    ) public {
+        uint256 fulfillmentId,
+        PaymentProof calldata proof
+    ) external {
         CompactMetadata memory compact = deconstructMetadata();
-        // TODO: Validate  transaction here
         require(
             initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0,
             "fulfilledTime should be 0"
