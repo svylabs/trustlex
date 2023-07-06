@@ -453,7 +453,8 @@ contract TrustlexPerAssetOrderBook {
             
         emit PAYMENT_SUCCESSFUL(
             msg.sender, 
-            initializedFulfillments[offerId][fulfillmentId].fulfillmentBy,offerId, 
+            offers[offerId].offeredBy,
+            offerId, 
             fulfillmentId,
             txId,
             sha256(scriptOutput)
