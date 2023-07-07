@@ -89,7 +89,8 @@ contract TrustlexPerAssetOrderBook {
         uint256 indexed offerId,
         uint256  fulfillmentId,
         bytes32 txHash, // This is the Bitcoin txHash
-        bytes32 outputHash // This will be the sha256 value of the scriptOutput
+        bytes32 outputHash, // This will be the sha256 value of the scriptOutput
+        uint64 quantityRequested
     );
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
     event OfferCancelEvent(uint256 offerId);
@@ -450,6 +451,8 @@ contract TrustlexPerAssetOrderBook {
         }
         initializedFulfillments[offerId][fulfillmentId]
             .paymentProofSubmitted = true;
+         uint64 quantityRequested =   initializedFulfillments[offerId][fulfillmentId]
+            .quantityRequested;
             
         emit PAYMENT_SUCCESSFUL(
             msg.sender, 
@@ -457,7 +460,8 @@ contract TrustlexPerAssetOrderBook {
             offerId, 
             fulfillmentId,
             txId,
-            sha256(scriptOutput)
+            sha256(scriptOutput),
+            quantityRequested
         );
         
         
