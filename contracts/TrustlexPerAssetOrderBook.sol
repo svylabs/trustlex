@@ -87,10 +87,9 @@ contract TrustlexPerAssetOrderBook {
         address indexed submittedBy,
         address indexed receivedBy, // not sure if we can have more than 3 indexed parameters. If not, we can remove the indexed from 'fulfillmentId' - think about it.
         uint256 indexed offerId,
-        uint256  fulfillmentId,
+        uint256  compactFulfillmentDetail,
         bytes32 txHash, // This is the Bitcoin txHash
-        bytes32 outputHash, // This will be the sha256 value of the scriptOutput
-        uint64 quantityRequested
+        bytes32 outputHash // This will be the sha256 value of the scriptOutput
     );
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
     event OfferCancelEvent(uint256 offerId);
@@ -458,10 +457,9 @@ contract TrustlexPerAssetOrderBook {
             msg.sender, 
             offers[offerId].offeredBy,
             offerId, 
-            fulfillmentId,
+            (fulfillmentId  << 8) | quantityRequested,
             txId,
             sha256(scriptOutput),
-            quantityRequested
         );
         
         
