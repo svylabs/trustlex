@@ -459,7 +459,7 @@ contract TrustlexPerAssetOrderBook {
             offerId, 
             (fulfillmentId  << 8) | quantityRequested,
             txId,
-            sha256(scriptOutput),
+            sha256(scriptOutput)
         );
         
         
