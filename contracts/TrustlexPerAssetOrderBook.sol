@@ -24,6 +24,7 @@ contract TrustlexPerAssetOrderBook {
         uint256 totalCollateralAdded;
         address collateralAddedBy;
         uint32 fulfilledTime;
+        uint256 fulfillRequestedTime;
         bool allowAnyoneToSubmitPaymentProofForFee;
         bool allowAnyoneToAddCollateralForFee;
         bool paymentProofSubmitted;
@@ -70,6 +71,8 @@ contract TrustlexPerAssetOrderBook {
 
     mapping(uint256 => Offer) public offers;
 
+    uint256 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
+
     event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
     event INITIALIZED_FULFILLMENT(
@@ -89,7 +92,8 @@ contract TrustlexPerAssetOrderBook {
         uint256 indexed offerId,
         uint256  compactFulfillmentDetail,
         bytes32 txHash, // This is the Bitcoin txHash
-        bytes32 outputHash // This will be the sha256 value of the scriptOutput
+        bytes32 outputHash, // This will be the sha256 value of the scriptOutput
+        bytes32 secret
     );
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
     event OfferCancelEvent(uint256 offerId);
@@ -272,6 +276,7 @@ contract TrustlexPerAssetOrderBook {
         FulfillmentRequest memory fulfillment = _fulfillment;
         fulfillment.fulfillmentBy = msg.sender;
         fulfillment.isExpired = false;
+        fulfillment.fulfillRequestedTime = block.timestamp;
 
         if (satoshisReserved > 0) {
             require(
@@ -343,13 +348,19 @@ contract TrustlexPerAssetOrderBook {
         uint32 blockHeight;
     }
 
+    struct HTLCReveal {
+        bytes32 secret;
+        bytes20 recoveryPubKeyHash;
+    }
+
     /*
        validate transaction  and pay all involved parties
     */
     function submitPaymentProof(
         uint256 offerId,
         uint256 fulfillmentId,
-        PaymentProof calldata proof
+        PaymentProof calldata proof,
+        HTLCReveal calldata htlcDetail
     ) external {
         CompactMetadata memory compact = deconstructMetadata();
         require(
@@ -366,13 +377,28 @@ contract TrustlexPerAssetOrderBook {
         // TODO: Test all of these
         uint256 valueRequested = initializedFulfillments[offerId][fulfillmentId]
             .quantityRequested;
-        bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScript(
-            address(this),
-            offerId,
-            fulfillmentId,
-            offers[offerId].bitcoinAddress,
-            offers[offerId].orderedTime
-        );
+        bytes memory scriptOutput;
+        bytes32 hashedSecret = sha256(abi.encodePacked(sha256(bytes.concat(htlcDetail.secret))));
+        if (htlcDetail.recoveryPubKeyHash == bytes20(address(0x00))) {
+            scriptOutput = BitcoinTransactionUtils.getTrustlexScript(
+                address(this),
+                offerId,
+                fulfillmentId,
+                offers[offerId].bitcoinAddress,
+                offers[offerId].orderedTime
+            );
+        } else {
+            scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV2(
+                address(this),
+                offerId,
+                fulfillmentId,
+                offers[offerId].bitcoinAddress,
+                offers[offerId].orderedTime,
+                htlcDetail.recoveryPubKeyHash,
+                uint32((initializedFulfillments[offerId][fulfillmentId].fulfillRequestedTime) + CLAIM_PERIOD),
+                hashedSecret
+            );
+        }
         require(
             BitcoinTransactionUtils.hasOutput(
                 proof.transaction,
@@ -457,9 +483,10 @@ contract TrustlexPerAssetOrderBook {
             msg.sender, 
             offers[offerId].offeredBy,
             offerId, 
-            (fulfillmentId  << (8 * 8)) | quantityRequested,
+            (fulfillmentId  << (8 * 8)) | quantityRequested | (uint256(uint160(htlcDetail.recoveryPubKeyHash)) << (28 * 8)),
             txId,
-            sha256(scriptOutput)
+            sha256(scriptOutput),
+            htlcDetail.secret
         );
         
         
