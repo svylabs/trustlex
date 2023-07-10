@@ -42,7 +42,7 @@ library BitcoinTransactionUtils {
     043a5912a77576a9140000000000000000000000000000000000000000876401ffb17576a91400000000000000000000000000000000000000008868ac
     */
 
-    function getTrustlexScriptV1(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTime, bytes20 redeemerPubkeyHash, uint32 lockTime) public pure returns (bytes memory) {
+    function getTrustlexScriptV1(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTime, bytes20 redeemerPubkeyHash, uint32 lockTime) public pure returns (bytes memory)  {
         bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderId), bytes32(fulfillmentId), pubkeyHash, bytes32(orderTime)));
         bytes4 shortOrderId = bytes4(hashedOrderId);
         // ORDER_ID OP_DROP OP_DUP OP_HASH160 <pubkeyHash> OP_EQUAL_VERIFY OP_CHECK_SIG
@@ -51,12 +51,76 @@ library BitcoinTransactionUtils {
             shortOrderId, 
             bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH:
             pubkeyHash,
-            bytes3(0x876404),
-            bytes4(uint32(lockTime)), // timestamp
+            bytes2(0x8764),
+            encodeNumber(lockTime), // timestamp
             bytes5(0xb17576a914), // OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP  OP_HASH160 LENGTH_OF_PUBKEY_HASH
             bytes20(redeemerPubkeyHash), // Redeemer public key
             bytes3(0x8868ac) // OP_EQUALVERIFYOP_ENDIF OP_CHECKSIG
         );
+        //return script;
+        return bytes.concat(
+            bytes2(0x0020), 
+            sha256(script)
+        );
+    }
+
+    /*
+
+
+    let witnessScript2 = bitcoin.script.compile([
+  Buffer.from(shortOrderId, 'hex'), 04 (followed by 4 bytes)
+  bitcoin.opcodes.OP_DROP, 75
+  bitcoin.opcodes.OP_DUP,  76
+  bitcoin.opcodes.OP_HASH160, a9
+  Buffer.from("0000000000000000000000000000000000000000", 'hex'), // counterparty pubKeyHash 14 00(20 times)
+  bitcoin.opcodes.OP_EQUAL, 87
+  bitcoin.opcodes.OP_IF, 63
+  bitcoin.opcodes.OP_SWAP, 7c
+  bitcoin.opcodes.OP_HASH256, aa
+  hashedSecret, 20 (followed by 32 bytes)
+  bitcoin.opcodes.OP_EQUALVERIFY, 88
+  bitcoin.opcodes.OP_ELSE,  67
+  bitcoin.script.number.encode(LOCKTIME_VALUE), // populate the future timestamp or future block number here 04 (4 bytes)
+  bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,  b1
+  bitcoin.opcodes.OP_DROP, 75
+  bitcoin.opcodes.OP_DUP, 76 // should duplicate public key
+  bitcoin.opcodes.OP_HASH160, a9
+  Buffer.from("0000000000000000000000000000000000000000", 'hex'), // my pub key hash 14 (20 bytes)
+  bitcoin.opcodes.OP_EQUALVERIFY, 88
+  bitcoin.opcodes.OP_ENDIF, 68
+  bitcoin.opcodes.OP_CHECKSIG, ac
+]);
+    */
+
+    //event BYTES(bytes bz);
+
+    // 0494cc07407576a914000000000000000000000000000000000000000087637caa20eb1dd79a77f81fdf5ff98e11da97630991671791141eb9acf39a64958e4d09278867040165cd1db17576a91400000000000000000000000000000000000000008868ac
+    function getTrustlexScriptV2(
+        address contractId, 
+        uint256 orderId, 
+        uint256 fulfillmentId, 
+        bytes20 pubkeyHash, 
+        uint256 orderTime, 
+        bytes20 redeemerPubkeyHash, 
+        uint32 lockTime, 
+        bytes32 hashedSecret) public pure returns (bytes memory) {
+        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderId), bytes32(fulfillmentId), pubkeyHash, bytes32(orderTime)));
+        bytes4 shortOrderId = bytes4(hashedOrderId);
+        bytes memory script = bytes.concat(
+            bytes1(0x04), // length of order id
+            shortOrderId, 
+            bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH:
+            pubkeyHash,
+            bytes5(0x87637caa20),
+            hashedSecret,
+            bytes2(0x8867),
+            encodeNumber(lockTime), // timestamp
+            bytes5(0xb17576a914), // OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP  OP_HASH160 LENGTH_OF_PUBKEY_HASH
+            bytes20(redeemerPubkeyHash), // Redeemer public key
+            bytes3(0x8868ac) // OP_EQUALVERIFY OP_ENDIF OP_CHECKSIG
+        );
+        //return script;
+        //emit BYTES(script);
         return bytes.concat(
             bytes2(0x0020), 
             sha256(script)
@@ -164,6 +228,39 @@ library BitcoinTransactionUtils {
         }
 
         return value;
+    }
+
+    function scriptNumSize(uint256 num) public pure returns (uint) {
+        if(num > 0x7fffffff) {
+            return 5;
+        } else if (num > 0x7fffff) {
+            return 4;
+        } else if (num > 0x7fff) {
+            return 3;
+        } else if (num  > 0x7f) {
+            return 2;
+        } else if (num > 0x00) {
+            return 1;
+        }
+        return 0;
+    }
+
+    function encodeNumber(uint256 number) public pure returns (bytes memory ret) {
+        uint256 size = scriptNumSize(number);
+        uint8 current = 0;
+        for (uint256 i = 0; i < size; ++i) {
+            current = (uint8(number) & 0xff);
+            if (i == (size -1) && (current & 0x80 > 0)) {
+                ret = bytes.concat(ret, bytes1(0x00));
+            } else {
+                ret = bytes.concat(ret, bytes1(current));
+            }
+            number = number >> 8;
+        }
+        return bytes.concat(
+            bytes1(uint8(ret.length)),
+            ret
+        );
     }
 
 }
