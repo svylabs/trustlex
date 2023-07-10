@@ -457,7 +457,7 @@ contract TrustlexPerAssetOrderBook {
             msg.sender, 
             offers[offerId].offeredBy,
             offerId, 
-            (fulfillmentId  << 8) | quantityRequested,
+            (fulfillmentId  << (8 * 8)) | quantityRequested,
             txId,
             sha256(scriptOutput)
         );
