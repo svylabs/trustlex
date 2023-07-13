@@ -97,14 +97,13 @@ library BitcoinTransactionUtils {
     // 0494cc07407576a914000000000000000000000000000000000000000087637caa20eb1dd79a77f81fdf5ff98e11da97630991671791141eb9acf39a64958e4d09278867040165cd1db17576a91400000000000000000000000000000000000000008868ac
     function getTrustlexScriptV2(
         address contractId, 
-        uint256 orderId, 
-        uint256 fulfillmentId, 
+        uint256 orderFulfillmentId, 
         bytes20 pubkeyHash, 
         uint256 orderTime, 
         bytes20 redeemerPubkeyHash, 
         uint32 lockTime, 
         bytes32 hashedSecret) public pure returns (bytes memory) {
-        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderId), bytes32(fulfillmentId), pubkeyHash, bytes32(orderTime)));
+        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderFulfillmentId >> 128), bytes32(orderFulfillmentId & ((1 << 128 - 1))), pubkeyHash, bytes32(orderTime)));
         bytes4 shortOrderId = bytes4(hashedOrderId);
         bytes memory script = bytes.concat(
             bytes1(0x04), // length of order id

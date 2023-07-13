@@ -24,7 +24,7 @@ contract TrustlexPerAssetOrderBook {
         uint256 totalCollateralAdded;
         address collateralAddedBy;
         uint32 fulfilledTime;
-        uint256 fulfillRequestedTime;
+        uint32 fulfillRequestedTime;
         bool allowAnyoneToSubmitPaymentProofForFee;
         bool allowAnyoneToAddCollateralForFee;
         bool paymentProofSubmitted;
@@ -71,7 +71,7 @@ contract TrustlexPerAssetOrderBook {
 
     mapping(uint256 => Offer) public offers;
 
-    uint256 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
+    uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
 
     event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
@@ -276,7 +276,7 @@ contract TrustlexPerAssetOrderBook {
         FulfillmentRequest memory fulfillment = _fulfillment;
         fulfillment.fulfillmentBy = msg.sender;
         fulfillment.isExpired = false;
-        fulfillment.fulfillRequestedTime = block.timestamp;
+        fulfillment.fulfillRequestedTime = uint32(block.timestamp);
 
         if (satoshisReserved > 0) {
             require(
@@ -353,6 +353,42 @@ contract TrustlexPerAssetOrderBook {
         bytes20 recoveryPubKeyHash;
     }
 
+    function validateProof(uint256 offerId, uint256 fulfillmentId, PaymentProof calldata proof, HTLCReveal calldata htlcDetail) private returns (bytes32 txId, bytes memory scriptOutput) {
+        uint256 valueRequested = initializedFulfillments[offerId][fulfillmentId]
+            .quantityRequested;
+        bytes32 hashedSecret = sha256(abi.encodePacked(sha256(bytes.concat(htlcDetail.secret))));
+        uint32 lockTime = (initializedFulfillments[offerId][fulfillmentId].fulfillRequestedTime) + CLAIM_PERIOD;
+        scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV2(
+                address(this),
+                offerId << 128 | fulfillmentId,
+                offers[offerId].bitcoinAddress,
+                offers[offerId].orderedTime,
+                htlcDetail.recoveryPubKeyHash,
+                lockTime,
+                hashedSecret
+        );
+        require(
+            BitcoinTransactionUtils.hasOutput(
+                proof.transaction,
+                valueRequested,
+                scriptOutput
+            ),
+            "required output is not available"
+        );
+
+        //bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
+        txId = sha256(abi.encodePacked(sha256(proof.transaction)));
+        require(
+            ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
+                txId,
+                proof.blockHeight,
+                proof.index,
+                proof.proof
+            ),
+            "Invalid tx inclusion proof"
+        );
+    }
+
     /*
        validate transaction  and pay all involved parties
     */
@@ -374,51 +410,7 @@ contract TrustlexPerAssetOrderBook {
             "Order is exired"
         );
 
-        // TODO: Test all of these
-        uint256 valueRequested = initializedFulfillments[offerId][fulfillmentId]
-            .quantityRequested;
-        bytes memory scriptOutput;
-        bytes32 hashedSecret = sha256(abi.encodePacked(sha256(bytes.concat(htlcDetail.secret))));
-        if (htlcDetail.recoveryPubKeyHash == bytes20(address(0x00))) {
-            scriptOutput = BitcoinTransactionUtils.getTrustlexScript(
-                address(this),
-                offerId,
-                fulfillmentId,
-                offers[offerId].bitcoinAddress,
-                offers[offerId].orderedTime
-            );
-        } else {
-            scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV2(
-                address(this),
-                offerId,
-                fulfillmentId,
-                offers[offerId].bitcoinAddress,
-                offers[offerId].orderedTime,
-                htlcDetail.recoveryPubKeyHash,
-                uint32((initializedFulfillments[offerId][fulfillmentId].fulfillRequestedTime) + CLAIM_PERIOD),
-                hashedSecret
-            );
-        }
-        require(
-            BitcoinTransactionUtils.hasOutput(
-                proof.transaction,
-                valueRequested,
-                scriptOutput
-            ),
-            "required output is not available"
-        );
-
-        //bytes32 txId = BitcoinUtils._sha256d(proof.transaction);
-        bytes32 txId = sha256(abi.encodePacked(sha256(proof.transaction)));
-        require(
-            ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
-                txId,
-                proof.blockHeight,
-                proof.index,
-                proof.proof
-            ),
-            "Invalid tx inclusion proof"
-        );
+        (bytes32 txId, bytes memory scriptOutput) = validateProof(offerId, fulfillmentId, proof, htlcDetail);        
 
         offers[offerId].satoshisReceived += initializedFulfillments[offerId][
             fulfillmentId
