@@ -7,16 +7,16 @@ contract TrustedBitcoinSPVChain is ITxVerifier {
 
     address owner;
 
-    mapping (uint256 => bytes32) merkleRoots;
+    mapping (uint256 => bytes32) public merkleRoots;
 
     constructor() {
         owner = msg.sender;
     }
 
     function AddHeader(uint256 height, bytes32 merkleRoot) external  {
-        // if (msg.sender == owner) {
+        if (msg.sender == owner) {
           merkleRoots[height] = merkleRoot;
-        // }
+        }
     }
 
     function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
