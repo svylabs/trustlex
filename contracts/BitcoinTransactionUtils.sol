@@ -3,7 +3,9 @@ pragma solidity ^0.8.0;
 
 library BitcoinTransactionUtils {
 
-    //04100000007576a914000000000000000000000000000000000000000088ac
+    /**
+      First version of the script to generate a trustlex address. Doesn't have any way to recover funds in case the confirmation time took too long.
+     */
 
     function getTrustlexScript(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTime) public view returns (bytes memory) {
         bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderId), bytes32(fulfillmentId), pubkeyHash, bytes32(orderTime)));
@@ -22,24 +24,8 @@ library BitcoinTransactionUtils {
         );
     }
 
-    // 
-    /* Buffer.from(shortOrderId, 'hex'),
-   / bitcoin.opcodes.OP_DROP,
-    bitcoin.opcodes.OP_DUP,
-    bitcoin.opcodes.OP_HASH160,
-    Buffer.from("0000000000000000000000000000000000000000", 'hex'),
-    bitcoin.opcodes.OP_EQUAL,
-    bitcoin.opcodes.OP_NOTIF,
-    ff, // populate the future timestamp or future block number here
-    bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,
-    bitcoin.opcodes.OP_DROP,
-    bitcoin.opcodes.OP_DUP, // should duplicate public key
-    bitcoin.opcodes.OP_HASH160,
-    Buffer.from("0000000000000000000000000000000000000000", "hex"),
-    bitcoin.opcodes.OP_EQUALVERIFY,
-    bitcoin.opcodes.OP_ENDIF,
-    bitcoin.opcodes.OP_CHECKSIG,
-    043a5912a77576a9140000000000000000000000000000000000000000876401ffb17576a91400000000000000000000000000000000000000008868ac
+    /*
+       First iteration of the script, it's not secure.
     */
 
     function getTrustlexScriptV1(address contractId, uint256 orderId, uint256 fulfillmentId, bytes20 pubkeyHash, uint256 orderTime, bytes20 redeemerPubkeyHash, uint32 lockTime) public pure returns (bytes memory)  {
@@ -64,37 +50,12 @@ library BitcoinTransactionUtils {
         );
     }
 
+    
     /*
-
-
-    let witnessScript2 = bitcoin.script.compile([
-  Buffer.from(shortOrderId, 'hex'), 04 (followed by 4 bytes)
-  bitcoin.opcodes.OP_DROP, 75
-  bitcoin.opcodes.OP_DUP,  76
-  bitcoin.opcodes.OP_HASH160, a9
-  Buffer.from("0000000000000000000000000000000000000000", 'hex'), // counterparty pubKeyHash 14 00(20 times)
-  bitcoin.opcodes.OP_EQUAL, 87
-  bitcoin.opcodes.OP_IF, 63
-  bitcoin.opcodes.OP_SWAP, 7c
-  bitcoin.opcodes.OP_HASH256, aa
-  hashedSecret, 20 (followed by 32 bytes)
-  bitcoin.opcodes.OP_EQUALVERIFY, 88
-  bitcoin.opcodes.OP_ELSE,  67
-  bitcoin.script.number.encode(LOCKTIME_VALUE), // populate the future timestamp or future block number here 04 (4 bytes)
-  bitcoin.opcodes.OP_CHECKLOCKTIMEVERIFY,  b1
-  bitcoin.opcodes.OP_DROP, 75
-  bitcoin.opcodes.OP_DUP, 76 // should duplicate public key
-  bitcoin.opcodes.OP_HASH160, a9
-  Buffer.from("0000000000000000000000000000000000000000", 'hex'), // my pub key hash 14 (20 bytes)
-  bitcoin.opcodes.OP_EQUALVERIFY, 88
-  bitcoin.opcodes.OP_ENDIF, 68
-  bitcoin.opcodes.OP_CHECKSIG, ac
-]);
+     This is based on HTLC, and is secure to transact. 
+     - User that sends to this address has a way to recover the funds after a few days.
+     - Ensures atomic swap(but also relies on the receiver to act after receiving funds)
     */
-
-    //event BYTES(bytes bz);
-
-    // 0494cc07407576a914000000000000000000000000000000000000000087637caa20eb1dd79a77f81fdf5ff98e11da97630991671791141eb9acf39a64958e4d09278867040165cd1db17576a91400000000000000000000000000000000000000008868ac
     function getTrustlexScriptV2(
         address contractId, 
         uint256 orderFulfillmentId, 
@@ -110,10 +71,10 @@ library BitcoinTransactionUtils {
             shortOrderId, 
             bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH:
             pubkeyHash,
-            bytes5(0x87637caa20),
+            bytes5(0x87637caa20), // OP_EQUAL OP_IF OP_SWAP OP_HASH256  LENGTH_OF_HASHEDSECRET
             hashedSecret,
-            bytes2(0x8867),
-            encodeNumber(lockTime), // timestamp
+            bytes2(0x8867), // OP_EQUALVERIFY OP_ELSE
+            encodeNumber(lockTime), // timestamp 
             bytes5(0xb17576a914), // OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP  OP_HASH160 LENGTH_OF_PUBKEY_HASH
             bytes20(redeemerPubkeyHash), // Redeemer public key
             bytes3(0x8868ac) // OP_EQUALVERIFY OP_ENDIF OP_CHECKSIG

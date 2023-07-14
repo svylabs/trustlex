@@ -15,20 +15,29 @@ error ValidateOfferQuantity(
 );
 
 contract TrustlexPerAssetOrderBook {
+    
     IERC20 public MyTokenERC20;
-    uint32 public fullFillmentExpiryTime;
+
+    // Constants
+    
+    uint32 public constant fullFillmentExpiryTime = 24 * 60 * 60;
+
+    uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
+
+    // Structs
+    
     struct FulfillmentRequest {
         address fulfillmentBy;
         uint64 quantityRequested;
         uint32 expiryTime;
-        uint256 totalCollateralAdded;
-        address collateralAddedBy;
         uint32 fulfilledTime;
         uint32 fulfillRequestedTime;
+        address collateralAddedBy;
         bool allowAnyoneToSubmitPaymentProofForFee;
         bool allowAnyoneToAddCollateralForFee;
         bool paymentProofSubmitted;
         bool isExpired;
+        uint256 totalCollateralAdded;
     }
 
     struct Offer {
@@ -61,6 +70,20 @@ contract TrustlexPerAssetOrderBook {
         uint32 totalOrdersInOrderBook; // total orders in order book
     }
 
+    struct PaymentProof {
+        bytes transaction;
+        bytes proof;
+        uint32 index;
+        uint32 blockHeight;
+    }
+
+    struct HTLCReveal {
+        bytes32 secret;
+        bytes20 recoveryPubKeyHash;
+    }
+
+    // Contract state
+
     uint256 public orderBookCompactMetadata;
 
     address public txInclusionVerifierContract;
@@ -71,7 +94,7 @@ contract TrustlexPerAssetOrderBook {
 
     mapping(uint256 => Offer) public offers;
 
-    uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
+    // Events
 
     event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
@@ -81,18 +104,13 @@ contract TrustlexPerAssetOrderBook {
         uint256 indexed fulfillmentId
     );
 
-    // event PAYMENT_SUCCESSFUL(
-    //     address indexed submittedBy,
-    //     uint256 indexed offerId,
-    //     uint256 indexed fulfillmentId
-    // );
     event PAYMENT_SUCCESSFUL(
         address indexed submittedBy,
-        address indexed receivedBy, // not sure if we can have more than 3 indexed parameters. If not, we can remove the indexed from 'fulfillmentId' - think about it.
+        address indexed receivedBy,
         uint256 indexed offerId,
         uint256  compactFulfillmentDetail,
-        bytes32 txHash, // This is the Bitcoin txHash
-        bytes32 outputHash, // This will be the sha256 value of the scriptOutput
+        bytes32 txHash,
+        bytes32 outputHash,
         bytes32 secret
     );
     event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
@@ -102,7 +120,6 @@ contract TrustlexPerAssetOrderBook {
         orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
             (12 * 8));
         MyTokenERC20 = IERC20(_tokenContract);
-        fullFillmentExpiryTime = 7 * 24 * 60 * 60;
         txInclusionVerifierContract = txInclusionVerifier;
     }
 
@@ -123,11 +140,6 @@ contract TrustlexPerAssetOrderBook {
         compactMeta = (uint256(uint160(metadata.tokenContract)) << (12 * 8));
         compactMeta |= (uint256(metadata.totalOrdersInOrderBook) << (8 * 8));
         orderBookCompactMetadata = compactMeta;
-    }
-
-    // TODO: Remove after test
-    function setFullFillmentExpiryTime(uint32 expiryTime) public {
-        fullFillmentExpiryTime = expiryTime;
     }
 
     function getTotalOffers() public view returns (uint256) {
@@ -341,19 +353,7 @@ contract TrustlexPerAssetOrderBook {
         return resultFulfillmentRequest;
     }
 
-    struct PaymentProof {
-        bytes transaction;
-        bytes proof;
-        uint32 index;
-        uint32 blockHeight;
-    }
-
-    struct HTLCReveal {
-        bytes32 secret;
-        bytes20 recoveryPubKeyHash;
-    }
-
-    function validateProof(uint256 offerId, uint256 fulfillmentId, PaymentProof calldata proof, HTLCReveal calldata htlcDetail) private returns (bytes32 txId, bytes memory scriptOutput) {
+    function validateProof(uint256 offerId, uint256 fulfillmentId, PaymentProof calldata proof, HTLCReveal calldata htlcDetail) private view returns (bytes32 txId, bytes memory scriptOutput) {
         uint256 valueRequested = initializedFulfillments[offerId][fulfillmentId]
             .quantityRequested;
         bytes32 hashedSecret = sha256(abi.encodePacked(sha256(bytes.concat(htlcDetail.secret))));
