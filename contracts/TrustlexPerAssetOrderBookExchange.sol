@@ -19,25 +19,24 @@ contract TrustlexPerAssetOrderBookExchange {
     IERC20 public MyTokenERC20;
 
     // Constants
-    uint32 public constant SETTLEMENT_COMPETION_WINDOW = 15 * 60; // 15 minutes after initializing settlement
+    uint32 public constant SETTLEMENT_COMPLETION_WINDOW = 15 * 60; // 15 minutes
 
-    uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
+    uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60; // 7 days
 
     // Structs
     struct SettlementRequest {
         address settledBy; // msg.sender
         uint64 quantityRequested;
         uint32 settlementRequestedTime;
-        uint32 lockTime;
-        bytes32 hashedSecret;
-        bytes20 recoveryPubKeyHash;
-        uint160 settlementId;
         uint32 expiryTime;
         uint32 settledTime;
+        uint32 lockTime;
+        bytes20 recoveryPubKeyHash;
         bool settled;
         bool isExpired;
         bytes32 txId;
         bytes32 scriptOutputHash;
+        bytes32 hashedSecret;
     }
 
     struct Offer {
@@ -313,7 +312,7 @@ contract TrustlexPerAssetOrderBookExchange {
 
         settlement.expiryTime =
             uint32(block.timestamp) +
-            SETTLEMENT_COMPETION_WINDOW; 
+            SETTLEMENT_COMPLETION_WINDOW; 
         initializedSettlements[offerId][settlementId] = settlement;
         // offers[offerId].satoshisReserved = offer.satoshisReserved;
         offers[offerId].satoshisReserved =
@@ -393,7 +392,7 @@ contract TrustlexPerAssetOrderBookExchange {
         ].quantityRequested;
     }
 
-    function finalizeSettlement(uint256 offerId, uint256 settlementId, address tokenContract) private {
+    function _finalizeSettlement(uint256 offerId, uint256 settlementId, address tokenContract) private {
         settleOffer(offerId, settlementId);
         settleFunds(offerId, settlementId, tokenContract);
         initializedSettlements[offerId][settlementId].settledTime = uint32(
@@ -420,20 +419,8 @@ contract TrustlexPerAssetOrderBookExchange {
             );
         }
     }
-    /*
-       settleFunds:
 
-       User reveals the HTLC secret.
-       Contract checks:
-        - If the given secret is valid
-        - Checks if the settlement has not expired
-        - checks if it was not settled before
-    */
-    function settle(
-        uint256 offerId,
-        HTLCReveal calldata htlcDetail
-    ) external {
-        uint256 settlementId = uint160(msg.sender);
+    function _validateFinalizeSettlement(uint256 offerId, uint256 settlementId, HTLCReveal calldata htlcDetail) private view {
         require(initializedSettlements[offerId][settlementId].settledBy == msg.sender, "Settlement should exist");
         require(initializedSettlements[offerId][settlementId].expiryTime > block.timestamp, "Settlement has expired");
         require(
@@ -444,13 +431,28 @@ contract TrustlexPerAssetOrderBookExchange {
             initializedSettlements[offerId][settlementId].settled == false,
             "Should not have settled before"
         );
+    }
+    /*
+       finalizeSettlement:
+
+       User reveals the HTLC secret.
+       Contract checks:
+        - If the given secret is valid
+        - Checks if the settlement has not expired
+        - checks if it was not settled before
+    */
+    function finalizeSettlement(
+        uint256 offerId,
+        HTLCReveal calldata htlcDetail
+    ) external {
+        uint256 settlementId = uint160(msg.sender);
+         uint64 quantityRequested =   initializedSettlements[offerId][settlementId]
+            .quantityRequested;
+        _validateFinalizeSettlement(offerId, settlementId, htlcDetail);
 
         CompactMetadata memory compact = deconstructMetadata();
-        finalizeSettlement(offerId, settlementId, compact.tokenContract);
+        _finalizeSettlement(offerId, settlementId, compact.tokenContract);
         // settleFees
-
-        uint64 quantityRequested =   initializedSettlements[offerId][settlementId]
-            .quantityRequested;
             
         emit SETTLEMENT_SUCCESSFUL (
             msg.sender, 
