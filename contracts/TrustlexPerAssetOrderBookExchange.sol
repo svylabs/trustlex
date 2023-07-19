@@ -393,7 +393,9 @@ contract TrustlexPerAssetOrderBookExchange {
         ].quantityRequested;
     }
 
-    function settleSettlement(uint256 offerId, uint256 settlementId) private {
+    function finalizeSettlement(uint256 offerId, uint256 settlementId, address tokenContract) private {
+        settleOffer(offerId, settlementId);
+        settleFunds(offerId, settlementId, tokenContract);
         initializedSettlements[offerId][settlementId].settledTime = uint32(
             block.timestamp
         );
@@ -444,9 +446,7 @@ contract TrustlexPerAssetOrderBookExchange {
         );
 
         CompactMetadata memory compact = deconstructMetadata();
-        settleOffer(offerId, settlementId);
-        settleSettlement(offerId, settlementId);
-        settleFunds(offerId, settlementId, compact.tokenContract);
+        finalizeSettlement(offerId, settlementId, compact.tokenContract);
         // settleFees
 
         uint64 quantityRequested =   initializedSettlements[offerId][settlementId]
