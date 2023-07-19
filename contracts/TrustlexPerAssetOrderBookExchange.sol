@@ -261,12 +261,7 @@ contract TrustlexPerAssetOrderBookExchange {
 
      */
 
-    function initiateSettlement(
-        uint256 offerId,
-        SettlementRequest calldata _settlement,
-        PaymentProof calldata proof
-    ) public payable {
-        uint256 settlementId = uint160(msg.sender);
+    function _validateInitiateSettlement(uint256 offerId, uint256 settlementId) private view {
         require(
              (
                 (
@@ -279,35 +274,13 @@ contract TrustlexPerAssetOrderBookExchange {
              ),
              "Cannot update an existing or non-expired settlement"
         );
-        Offer memory offer = offers[offerId];
-        uint64 satoshisToReceive = offer.satoshisToReceive;
-        uint64 satoshisReserved = offer.satoshisReserved;
-        uint64 satoshisReceived = offer.satoshisReceived;
+    }
 
-        bool settlementExists = false;
-        (offer, settlementExists) = recoverExpiredSettlements(offerId, settlementId, offer);
-        
-        satoshisReserved = offer.satoshisReserved;
-        if (
-            !(satoshisToReceive >=
-                (satoshisReserved +
-                    satoshisReceived +
-                    _settlement.quantityRequested))
-        ) {
-            revert ValidateOfferQuantity({
-                satoshisToReceive: satoshisToReceive,
-                satoshisReserved: satoshisReserved,
-                satoshisReceived: satoshisReceived,
-                quantityRequested: _settlement.quantityRequested
-            });
-        }
+    function _initiateSettlement(uint256 offerId, uint256 settlementId, Offer memory offer, SettlementRequest memory _settlement, bytes32 txId, bytes32 scriptOutputHash) private {
         SettlementRequest memory settlement = _settlement;
         settlement.settledBy = msg.sender;
-        settlement.isExpired = false;
         settlement.settlementRequestedTime = uint32(block.timestamp);
-        (bytes32 txId, bytes memory output) = validateProof(offerId, settlementId, _settlement, proof);
         settlement.txId = txId;
-        bytes32 scriptOutputHash = sha256(bytes.concat(sha256(output)));
         settlement.scriptOutputHash = scriptOutputHash;
 
         settlement.expiryTime =
@@ -318,8 +291,33 @@ contract TrustlexPerAssetOrderBookExchange {
         offers[offerId].satoshisReserved =
             offer.satoshisReserved +
             _settlement.quantityRequested;
+    }
 
-        if (settlementExists) {
+    function _checkInvariant(Offer memory offer, uint64 quantityRequested) private view {
+        require(offer.satoshisToReceive >=
+                (offer.satoshisReserved +
+                    offer.satoshisReceived +
+                    quantityRequested),
+            "quantityRequested is more than OfferValue"
+        );
+    }
+
+    function initiateSettlement(
+        uint256 offerId,
+        SettlementRequest calldata _settlement,
+        PaymentProof calldata proof
+    ) public payable {
+        uint256 settlementId = uint160(msg.sender);
+        _validateInitiateSettlement(offerId, settlementId);
+        (bytes32 txId, bytes32 scriptOutputHash) = _validateSettlementProof(offerId, settlementId, _settlement, proof);
+        
+        Offer memory offer = offers[offerId];
+        bool settlementExists = false;
+        (offer, settlementExists) = recoverExpiredSettlements(offerId, settlementId, offer);
+        
+        _checkInvariant(offer, _settlement.quantityRequested);
+        _initiateSettlement(offerId, settlementId, offer, _settlement, txId, scriptOutputHash);
+        if (!settlementExists) {
             offers[offerId].settlementRequests.push(settlementId);
         }
         emit INITIALIZED_SETTLEMENT(msg.sender, offerId, settlementId);
@@ -349,10 +347,11 @@ contract TrustlexPerAssetOrderBookExchange {
         return resultSettlementRequest;
     }
 
-    function validateProof(uint256 offerId, uint256 settlementId, SettlementRequest calldata settlementRequest, PaymentProof calldata proof) private view returns (bytes32 txId, bytes memory scriptOutput) {
+    function _validateSettlementProof(uint256 offerId, uint256 settlementId, SettlementRequest calldata settlementRequest, PaymentProof calldata proof) 
+            private view returns (bytes32 txId, bytes32 scriptOutputHash) {
         uint256 valueRequested = settlementRequest
             .quantityRequested;
-        scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV3(
+        bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV3(
                 address(this),
                 (offerId << 160) | settlementId,
                 offers[offerId].pubKeyHash,
@@ -371,6 +370,7 @@ contract TrustlexPerAssetOrderBookExchange {
         );
 
         txId = BitcoinUtils._sha256d(proof.transaction);
+        scriptOutputHash = sha256(bytes.concat(sha256(scriptOutput)));
         //txId = sha256(abi.encodePacked(sha256(proof.transaction)));
         require(
             ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
