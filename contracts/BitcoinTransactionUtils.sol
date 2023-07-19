@@ -87,6 +87,42 @@ library BitcoinTransactionUtils {
         );
     }
 
+    /*
+     This is based on HTLC, and is secure to transact. 
+     - User that sends to this address has a way to recover the funds after a few days.
+     - Ensures atomic swap(but also relies on the receiver to act after receiving funds)
+    */
+    function getTrustlexScriptV3(
+        address contractId, 
+        uint256 orderFulfillmentId, 
+        bytes20 pubkeyHash, 
+        uint256 orderTime, 
+        bytes20 redeemerPubkeyHash, 
+        uint32 lockTime, 
+        bytes32 hashedSecret) public pure returns (bytes memory) {
+        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderFulfillmentId >> (160)), bytes32(orderFulfillmentId & ((1 << 160 - 1))), pubkeyHash, bytes32(orderTime)));
+        bytes4 shortOrderId = bytes4(hashedOrderId);
+        bytes memory script = bytes.concat(
+            bytes1(0x04), // length of order id
+            shortOrderId, 
+            bytes4(0x7576a914), // OP_DROP OP_DUP OP_HASH160 LENGTH_OF_PUBKEY_HASH:
+            pubkeyHash,
+            bytes5(0x87637caa20), // OP_EQUAL OP_IF OP_SWAP OP_HASH256  LENGTH_OF_HASHEDSECRET
+            hashedSecret,
+            bytes2(0x8867), // OP_EQUALVERIFY OP_ELSE
+            encodeNumber(lockTime), // timestamp 
+            bytes5(0xb17576a914), // OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP  OP_HASH160 LENGTH_OF_PUBKEY_HASH
+            bytes20(redeemerPubkeyHash), // Redeemer public key
+            bytes3(0x8868ac) // OP_EQUALVERIFY OP_ENDIF OP_CHECKSIG
+        );
+        //return script;
+        //emit BYTES(script);
+        return bytes.concat(
+            bytes2(0x0020), 
+            sha256(script)
+        );
+    }
+
     function hasOutput(bytes calldata transactionData, uint256 value, bytes calldata scriptPubKey) external pure returns (bool) {
         uint offset = 0;
         //parsedTx.version = parseUint32LE(transactionData, offset);

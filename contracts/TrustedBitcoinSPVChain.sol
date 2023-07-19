@@ -13,7 +13,7 @@ contract TrustedBitcoinSPVChain is ITxVerifier {
         owner = msg.sender;
     }
 
-    function AddHeader(uint256 height, bytes32 merkleRoot) external  {
+    function AddHeader(uint256 height, bytes32 merkleRoot) external {
         if (msg.sender == owner) {
           merkleRoots[height] = merkleRoot;
         }

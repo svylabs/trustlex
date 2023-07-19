@@ -20,4 +20,6 @@ interface ITxVerifier {
 
 interface IGov {
       function updateConfirmations(uint32 confirmations, bytes32 currentBlockHash) external;
+      //function createOrderBookContract(address token) external;
+      //function setForkBlock(uint32 blockHeight, bytes calldata blockHeader) external; // should invalidate other blocks in front of it and should confirm this block
 }

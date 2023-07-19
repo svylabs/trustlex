@@ -1,0 +1,552 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.4.22 <0.9.0;
+import {SafeMath} from "./SafeMath.sol";
+import {ITxVerifier} from "./ISPVChain.sol";
+import {BitcoinUtils} from "./BitcoinUtils.sol";
+import {BitcoinTransactionUtils} from "./BitcoinTransactionUtils.sol";
+import {IERC20} from "./IERC20.sol";
+
+// Error handling to check wether  _fulfillment.quantityRequested can be intiated or not
+error ValidateOfferQuantity(
+    uint64 satoshisToReceive,
+    uint64 satoshisReserved,
+    uint64 satoshisReceived,
+    uint64 quantityRequested
+);
+
+contract TrustlexPerAssetOrderBookExchange {
+    
+    IERC20 public MyTokenERC20;
+
+    // Constants
+    uint32 public constant fullFillmentExpiryTime = 15 * 60; // 15 minutes after initializing fulfillment
+
+    uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
+
+    // Structs
+    struct FulfillmentRequest {
+        address fulfilledBy; // msg.sender
+        uint64 quantityRequested;
+        uint32 fulfillRequestedTime;
+        uint32 lockTime;
+        bytes32 hashedSecret;
+        bytes20 recoveryPubKeyHash;
+        uint160 fulfillmentId;
+        uint32 expiryTime;
+        uint32 fulfilledTime;
+        bool fulfilled;
+        bool isExpired;
+        bytes32 txId;
+        bytes32 scriptOutputHash;
+    }
+
+    struct Offer {
+        uint256 offerQuantity;
+        address offeredBy;
+        uint32 offerValidTill;
+        uint32 orderedTime;
+        uint32 offeredBlockNumber;
+        bytes20 pubKeyHash;
+        uint64 satoshisToReceive;
+        uint64 satoshisReceived;
+        uint64 satoshisReserved;
+        uint256[] fulfillmentRequests;
+        bool isCanceled;
+    }
+
+    struct ResultOffer {
+        uint256 offerId;
+        Offer offer;
+    }
+
+    struct ResultFulfillmentRequest {
+        FulfillmentRequest fulfillmentRequest;
+        uint256 fulfillmentRequestId;
+    }
+
+    struct CompactMetadata {
+        address tokenContract; // 20 bytes
+        uint32 totalOrdersInOrderBook; // total orders in order book
+    }
+
+    struct PaymentProof {
+        bytes transaction;
+        bytes proof;
+        uint32 index;
+        uint32 blockHeight;
+    }
+
+    struct HTLCReveal {
+        bytes32 secret;
+    }
+
+    // Contract state
+
+    uint256 public orderBookCompactMetadata;
+
+    address public txInclusionVerifierContract;
+
+    // mapping(uint256 offerId => mapping(uint256 fullfillmentId => FulfillmentRequest fullfillmentData))
+    mapping(uint256 => mapping(uint256 => FulfillmentRequest))
+        public initializedFulfillments;
+
+    mapping(uint256 => Offer) public offers;
+
+    // Events
+
+    event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
+
+    event INITIALIZED_FULFILLMENT(
+        address indexed claimedBy,
+        uint256 indexed offerId,
+        uint256 indexed fulfillmentId
+    );
+
+    event PAYMENT_SUCCESSFUL(
+        address indexed submittedBy,
+        address indexed receivedBy,
+        uint256 indexed offerId,
+        uint256  compactFulfillmentDetail,
+        bytes32 txHash,
+        bytes32 outputHash,
+        bytes32 secret
+    );
+    event OfferExtendedEvent(uint256 offerId, uint32 offerValidTill);
+    event OfferCancelEvent(uint256 offerId);
+
+    constructor(address _tokenContract, address txInclusionVerifier) {
+        orderBookCompactMetadata = (uint256(uint160(_tokenContract)) <<
+            (12 * 8));
+        MyTokenERC20 = IERC20(_tokenContract);
+        txInclusionVerifierContract = txInclusionVerifier;
+    }
+
+    function deconstructMetadata()
+        public
+        view
+        returns (CompactMetadata memory result)
+    {
+        uint256 compactMetadata = orderBookCompactMetadata;
+        result.totalOrdersInOrderBook = uint32(
+            (compactMetadata >> (8 * 8)) & (0xffffffff)
+        );
+        result.tokenContract = address(uint160(compactMetadata >> (12 * 8)));
+    }
+
+    function updateMetadata(CompactMetadata memory metadata) private {
+        uint256 compactMeta = 0;
+        compactMeta = (uint256(uint160(metadata.tokenContract)) << (12 * 8));
+        compactMeta |= (uint256(metadata.totalOrdersInOrderBook) << (8 * 8));
+        orderBookCompactMetadata = compactMeta;
+    }
+
+    function getTotalOffers() public view returns (uint256) {
+        return ((orderBookCompactMetadata >> (8 * 8)) & 0xffffffff);
+    }
+
+    // This function will return the full offer details
+    function getOffer(
+        uint256 offerId
+    ) public view returns (Offer memory offer) {
+        offer = offers[offerId];
+    }
+
+    function getOffers(
+        uint256 fromOfferId
+    ) public view returns (ResultOffer[50] memory result, uint256 total) {
+        uint256 min = 0;
+        if (fromOfferId >= 50) {
+            min = fromOfferId - 50;
+        }
+        if (getTotalOffers() < fromOfferId) {
+            fromOfferId = getTotalOffers();
+        }
+        for (uint256 offerId = uint256(fromOfferId); offerId > min; offerId--) {
+            result[total++] = ResultOffer({
+                offerId: offerId - 1,
+                offer: offers[offerId - 1]
+            });
+        }
+    }
+
+    function addOfferWithEth(
+        uint256 weieth,
+        uint64 satoshis,
+        bytes20 pubKeyHash,
+        uint32 offerValidTill
+    ) public payable {
+        CompactMetadata memory compact = deconstructMetadata();
+        require(compact.tokenContract == address(0x0));
+        require(msg.value >= weieth, "Please send the correct eth amount!");
+        Offer memory offer;
+        offer.offeredBy = msg.sender;
+        offer.offerQuantity = msg.value;
+        offer.satoshisToReceive = satoshis;
+        offer.pubKeyHash = pubKeyHash;
+        offer.offerValidTill = offerValidTill;
+        offer.offeredBlockNumber = uint32(block.number);
+        offer.orderedTime = uint32(block.timestamp);
+        offer.isCanceled = false;
+
+        uint256 offerId = compact.totalOrdersInOrderBook;
+        offers[offerId] = offer;
+        emit NEW_OFFER(msg.sender, offerId);
+        compact.totalOrdersInOrderBook = compact.totalOrdersInOrderBook + 1;
+        updateMetadata(compact);
+    }
+
+    function addOfferWithToken(
+        uint256 value,
+        uint64 satoshis,
+        bytes20 pubKeyHash,
+        uint32 offerValidTill
+    ) public {
+        require(
+            value <= MyTokenERC20.allowance(msg.sender, address(this)),
+            "Sender does not have allownace."
+        );
+
+        // transfer the tokens
+        MyTokenERC20.transferFrom(msg.sender, address(this), value);
+
+        CompactMetadata memory compact = deconstructMetadata();
+        require(compact.tokenContract != address(0x0));
+        Offer memory offer;
+        offer.offeredBy = msg.sender;
+        offer.offerQuantity = value;
+        offer.satoshisToReceive = satoshis;
+        offer.pubKeyHash = pubKeyHash;
+        offer.offerValidTill = offerValidTill;
+        offer.offeredBlockNumber = uint32(block.number);
+        offer.orderedTime = uint32(block.timestamp);
+        offer.isCanceled = false;
+
+        uint256 offerId = compact.totalOrdersInOrderBook;
+        offers[offerId] = offer;
+        emit NEW_OFFER(msg.sender, offerId);
+        compact.totalOrdersInOrderBook = compact.totalOrdersInOrderBook + 1;
+        updateMetadata(compact);
+    }
+
+
+    function recoverExpiredFulfillments(uint256 offerId, uint256 fulfillmentId, Offer memory offer) private returns (Offer memory updatedOffer, bool fulfillmentExists )  {
+        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
+        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+            FulfillmentRequest
+                memory existingFulfillmentRequest = initializedFulfillments[
+                    offerId
+                ][fulfillmentIds[index]];
+            if (
+                existingFulfillmentRequest.expiryTime < block.timestamp &&
+                existingFulfillmentRequest.isExpired == false &&
+                existingFulfillmentRequest.fulfilled == false
+            ) {
+                // Claim any satoshis reserved
+                offer.satoshisReserved -= existingFulfillmentRequest
+                    .quantityRequested;
+
+                initializedFulfillments[offerId][fulfillmentIds[index]]
+                    .isExpired = true;
+            }
+            if (fulfillmentId == fulfillmentIds[index]) {
+                fulfillmentExists = true;
+            }
+        }
+        updatedOffer = offer;
+    }
+
+    /**
+
+        Initiates the fulfillment
+        - Checks if there is an existing fulfillment
+        - Checks if there is an existing fulfillment
+
+     */
+
+    function initiateFulfillment(
+        uint256 offerId,
+        FulfillmentRequest calldata _fulfillment,
+        PaymentProof calldata proof
+    ) public payable {
+        uint256 fulfillmentId = uint160(msg.sender);
+        require(
+             (
+                (
+                    (initializedFulfillments[offerId][fulfillmentId].fulfilledBy == address(0x0)) ||
+                    (initializedFulfillments[offerId][fulfillmentId].expiryTime > 0 && initializedFulfillments[offerId][fulfillmentId].expiryTime < block.timestamp)
+                ) &&
+                (
+                    (initializedFulfillments[offerId][fulfillmentId].fulfilled == false)
+                )
+             ),
+             "Cannot update an existing fulfillment or non-expired fulfillment"
+        );
+        CompactMetadata memory compact = deconstructMetadata();
+        Offer memory offer = offers[offerId];
+        uint64 satoshisToReceive = offer.satoshisToReceive;
+        uint64 satoshisReserved = offer.satoshisReserved;
+        uint64 satoshisReceived = offer.satoshisReceived;
+
+        bool fulfillmentExists = false;
+        (offer, fulfillmentExists) = recoverExpiredFulfillments(offerId, fulfillmentId, offer);
+        
+        satoshisReserved = offer.satoshisReserved;
+        if (
+            !(satoshisToReceive >=
+                (satoshisReserved +
+                    satoshisReceived +
+                    _fulfillment.quantityRequested))
+        ) {
+            revert ValidateOfferQuantity({
+                satoshisToReceive: satoshisToReceive,
+                satoshisReserved: satoshisReserved,
+                satoshisReceived: satoshisReceived,
+                quantityRequested: _fulfillment.quantityRequested
+            });
+        }
+        FulfillmentRequest memory fulfillment = _fulfillment;
+        fulfillment.fulfilledBy = msg.sender;
+        fulfillment.isExpired = false;
+        fulfillment.fulfillRequestedTime = uint32(block.timestamp);
+        (bytes32 txId, bytes memory output) = validateProof(offerId, fulfillmentId, _fulfillment, proof);
+        fulfillment.txId = txId;
+        bytes32 scriptOutputHash = sha256(bytes.concat(sha256(output)));
+        fulfillment.scriptOutputHash = scriptOutputHash;
+
+        fulfillment.expiryTime =
+            uint32(block.timestamp) +
+            fullFillmentExpiryTime; 
+        initializedFulfillments[offerId][fulfillmentId] = fulfillment;
+        // offers[offerId].satoshisReserved = offer.satoshisReserved;
+        offers[offerId].satoshisReserved =
+            offer.satoshisReserved +
+            _fulfillment.quantityRequested;
+
+        if (fulfillmentExists) {
+            offers[offerId].fulfillmentRequests.push(fulfillmentId);
+        }
+        emit INITIALIZED_FULFILLMENT(msg.sender, offerId, fulfillmentId);
+    }
+
+    // get the initial fullfillments list
+    function getInitiatedFulfillments(
+        uint256 offerId
+    ) public view returns (ResultFulfillmentRequest[] memory) {
+        uint256[] memory fulfillmentIds = offers[offerId].fulfillmentRequests;
+        ResultFulfillmentRequest[]
+            memory resultFulfillmentRequest = new ResultFulfillmentRequest[](
+                fulfillmentIds.length
+            );
+
+        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+            FulfillmentRequest
+                memory existingFulfillmentRequest = initializedFulfillments[
+                    offerId
+                ][fulfillmentIds[index]];
+            resultFulfillmentRequest[index] = ResultFulfillmentRequest(
+                existingFulfillmentRequest,
+                fulfillmentIds[index]
+            );
+        }
+
+        return resultFulfillmentRequest;
+    }
+
+    function validateProof(uint256 offerId, uint256 fulfillmentId, FulfillmentRequest calldata fulfillmentRequest, PaymentProof calldata proof) private view returns (bytes32 txId, bytes memory scriptOutput) {
+        uint256 valueRequested = fulfillmentRequest
+            .quantityRequested;
+        scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV3(
+                address(this),
+                (offerId << 160) | fulfillmentId,
+                offers[offerId].pubKeyHash,
+                offers[offerId].orderedTime,
+                fulfillmentRequest.recoveryPubKeyHash,
+                fulfillmentRequest.lockTime,
+                fulfillmentRequest.hashedSecret
+        );
+        require(
+            BitcoinTransactionUtils.hasOutput(
+                proof.transaction,
+                valueRequested,
+                scriptOutput
+            ),
+            "required output is not available"
+        );
+
+        txId = BitcoinUtils._sha256d(proof.transaction);
+        //txId = sha256(abi.encodePacked(sha256(proof.transaction)));
+        require(
+            ITxVerifier(txInclusionVerifierContract).verifyTxInclusionProof(
+                txId,
+                proof.blockHeight,
+                proof.index,
+                proof.proof
+            ),
+            "Invalid tx inclusion proof"
+        );
+    }
+
+    /*
+       revealHTLCSecret:
+
+       User reveals the HTLC secret.
+       Contract checks:
+        - If the given secret is valid
+        - Checks if the fulfillment has not expired. If it has expired, 
+    */
+    function revealHTLCSecret(
+        uint256 offerId,
+        HTLCReveal calldata htlcDetail
+    ) external {
+        uint256 fulfillmentId = uint160(msg.sender);
+        require(initializedFulfillments[offerId][fulfillmentId].expiryTime > block.timestamp, "Fulfillment has expired");
+        require(sha256(bytes.concat(sha256(bytes.concat(htlcDetail.secret)))) == initializedFulfillments[offerId][fulfillmentId].hashedSecret, "Hashed secret doesn't match");
+        CompactMetadata memory compact = deconstructMetadata();
+        require(
+            initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0,
+            "fulfilledTime should be 0"
+        );
+        // add  check whether order is expired or not
+        require(
+            initializedFulfillments[offerId][fulfillmentId].expiryTime >=
+                block.timestamp,
+            "Fulfillment has expired"
+        );
+
+        offers[offerId].satoshisReceived += initializedFulfillments[offerId][
+            fulfillmentId
+        ].quantityRequested;
+        offers[offerId].satoshisReserved -= initializedFulfillments[offerId][
+            fulfillmentId
+        ].quantityRequested;
+
+        initializedFulfillments[offerId][fulfillmentId].fulfilledTime = uint32(
+            block.timestamp
+        );
+        // Send ETH / TOKEN on success
+        uint256 payAmountETh = (
+            initializedFulfillments[offerId][fulfillmentId].quantityRequested
+        ) * (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
+        if (compact.tokenContract == address(0x0)) {
+            bool success = payable(
+                msg.sender
+            ).send(payAmountETh);
+            require(success, "Transfer failed");
+        } else {
+            IERC20(compact.tokenContract).transfer(
+                msg.sender,
+                payAmountETh
+            );
+        }
+        initializedFulfillments[offerId][fulfillmentId]
+            .fulfilled = true;
+         uint64 quantityRequested =   initializedFulfillments[offerId][fulfillmentId]
+            .quantityRequested;
+            
+        emit PAYMENT_SUCCESSFUL(
+            msg.sender, 
+            offers[offerId].offeredBy,
+            offerId, 
+            (quantityRequested | (uint256(uint160(initializedFulfillments[offerId][fulfillmentId].recoveryPubKeyHash)) << (28 * 8))),
+            initializedFulfillments[offerId][fulfillmentId].txId,
+            initializedFulfillments[offerId][fulfillmentId].scriptOutputHash,
+            htlcDetail.secret
+        );
+        
+    }
+
+    function addEthCollateral() public payable {}
+
+    function addTokenCollateral() public payable {}
+
+    function extendOffer(uint256 offerId, uint32 offerValidTill) public {
+        require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
+        offers[offerId].offerValidTill =
+            offers[offerId].offerValidTill +
+            offerValidTill;
+        emit OfferExtendedEvent(offerId, offerValidTill);
+    }
+
+    function cancelOffer(uint256 offerId) public payable {
+        /*
+        require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
+        CompactMetadata memory compact = deconstructMetadata();
+
+        Offer memory offer = offers[offerId];
+        uint64 satoshisToReceive = offer.satoshisToReceive;
+        uint64 satoshisReserved = offer.satoshisReserved;
+        uint64 satoshisReceived = offer.satoshisReceived;
+        address offeredBy = offer.offeredBy;
+        require(offeredBy == msg.sender, "Offer creator can only cancel offer");
+        uint64 returnAbleAmountSatoshi;
+
+        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
+        uint256 payAmount;
+        // if offer has no fullfillment orders
+        if (fulfillmentIds.length == 0) {
+            returnAbleAmountSatoshi = satoshisToReceive;
+            offers[offerId].isCanceled = true;
+            payAmount =
+                (returnAbleAmountSatoshi) *
+                (offers[offerId].offerQuantity /
+                    offers[offerId].satoshisToReceive);
+        } else {
+            // if offer has  fullfillments order
+
+            // Update satoshisReserved amount  for expired order
+            for (uint256 index = 0; index < fulfillmentIds.length; index++) {
+                FulfillmentRequest
+                    memory existingFulfillmentRequest = initializedFulfillments[
+                        offerId
+                    ][fulfillmentIds[index]];
+                if (
+                    existingFulfillmentRequest.expiryTime < block.timestamp &&
+                    existingFulfillmentRequest.isExpired == false &&
+                    existingFulfillmentRequest.paymentProofSubmitted == false
+                ) {
+                    // Decrease the off satoshi resvered amou t for expired
+                    offer.satoshisReserved -= existingFulfillmentRequest
+                        .quantityRequested;
+
+                    initializedFulfillments[offerId][fulfillmentIds[index]]
+                        .isExpired = true;
+                }
+            }
+            satoshisReserved = offer.satoshisReserved;
+
+            returnAbleAmountSatoshi =
+                satoshisToReceive -
+                (satoshisReserved + satoshisReceived);
+
+            satoshisToReceive -= returnAbleAmountSatoshi;
+
+            payAmount =
+                (returnAbleAmountSatoshi) *
+                (offers[offerId].offerQuantity /
+                    offers[offerId].satoshisToReceive);
+
+            offers[offerId].satoshisReserved = satoshisReserved;
+            offers[offerId].satoshisToReceive = satoshisToReceive;
+            // decrease the offer quantity
+            offers[offerId].offerQuantity -= payAmount;
+        }
+
+        if (compact.tokenContract == address(0x0)) {
+            bool success = payable(offeredBy).send(payAmount);
+            require(success, "Transfer failed");
+        } else {
+            IERC20(compact.tokenContract).transfer(offeredBy, payAmount);
+        }
+        */
+
+        // update the
+
+        emit OfferCancelEvent(offerId);
+    }
+
+    function liquidateCollateral() public payable {}
+
+    function getBalance() public view returns (uint256 balance) {
+        return address(this).balance;
+    }
+}
