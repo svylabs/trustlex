@@ -293,7 +293,7 @@ contract TrustlexPerAssetOrderBookExchange {
             _settlement.quantityRequested;
     }
 
-    function _checkRequestedQuantityIsAvailable(Offer memory offer, uint64 quantityRequested) private view {
+    function _checkRequestedQuantityIsAvailable(Offer memory offer, uint64 quantityRequested) private pure {
         require(offer.satoshisToReceive >=
                 (offer.satoshisReserved +
                     offer.satoshisReceived +
