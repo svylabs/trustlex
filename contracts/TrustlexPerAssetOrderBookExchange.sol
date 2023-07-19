@@ -227,7 +227,7 @@ contract TrustlexPerAssetOrderBookExchange {
     }
 
 
-    function recoverExpiredSettlements(uint256 offerId, uint256 settlementId, Offer memory offer) private returns (Offer memory updatedOffer, bool settlementExists )  {
+    function _recoverExpiredSettlements(uint256 offerId, uint256 settlementId, Offer memory offer) private returns (Offer memory updatedOffer, bool settlementExists )  {
         uint256[] memory settlementIds = offer.settlementRequests;
         for (uint256 index = 0; index < settlementIds.length; index++) {
             SettlementRequest
@@ -313,7 +313,7 @@ contract TrustlexPerAssetOrderBookExchange {
         
         Offer memory offer = offers[offerId];
         bool settlementExists = false;
-        (offer, settlementExists) = recoverExpiredSettlements(offerId, settlementId, offer);
+        (offer, settlementExists) = _recoverExpiredSettlements(offerId, settlementId, offer);
         
         _checkInvariant(offer, _settlement.quantityRequested);
         _initiateSettlement(offerId, settlementId, offer, _settlement, txId, scriptOutputHash);
