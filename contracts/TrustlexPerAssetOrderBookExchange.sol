@@ -6,7 +6,7 @@ import {BitcoinUtils} from "./BitcoinUtils.sol";
 import {BitcoinTransactionUtils} from "./BitcoinTransactionUtils.sol";
 import {IERC20} from "./IERC20.sol";
 
-// Error handling to check wether  _fulfillment.quantityRequested can be intiated or not
+// Error handling to check wether  _settlement.quantityRequested can be intiated or not
 error ValidateOfferQuantity(
     uint64 satoshisToReceive,
     uint64 satoshisReserved,
@@ -19,22 +19,22 @@ contract TrustlexPerAssetOrderBookExchange {
     IERC20 public MyTokenERC20;
 
     // Constants
-    uint32 public constant fullFillmentExpiryTime = 15 * 60; // 15 minutes after initializing fulfillment
+    uint32 public constant SETTLEMENT_COMPETION_WINDOW = 15 * 60; // 15 minutes after initializing settlement
 
     uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60;
 
     // Structs
-    struct FulfillmentRequest {
-        address fulfilledBy; // msg.sender
+    struct SettlementRequest {
+        address settledBy; // msg.sender
         uint64 quantityRequested;
-        uint32 fulfillRequestedTime;
+        uint32 settlementRequestedTime;
         uint32 lockTime;
         bytes32 hashedSecret;
         bytes20 recoveryPubKeyHash;
-        uint160 fulfillmentId;
+        uint160 settlementId;
         uint32 expiryTime;
-        uint32 fulfilledTime;
-        bool fulfilled;
+        uint32 settledTime;
+        bool settled;
         bool isExpired;
         bytes32 txId;
         bytes32 scriptOutputHash;
@@ -50,7 +50,7 @@ contract TrustlexPerAssetOrderBookExchange {
         uint64 satoshisToReceive;
         uint64 satoshisReceived;
         uint64 satoshisReserved;
-        uint256[] fulfillmentRequests;
+        uint256[] settlementRequests;
         bool isCanceled;
     }
 
@@ -59,9 +59,9 @@ contract TrustlexPerAssetOrderBookExchange {
         Offer offer;
     }
 
-    struct ResultFulfillmentRequest {
-        FulfillmentRequest fulfillmentRequest;
-        uint256 fulfillmentRequestId;
+    struct ResultSettlementRequest {
+        SettlementRequest settlementRequest;
+        uint256 settlementRequestId;
     }
 
     struct CompactMetadata {
@@ -86,9 +86,8 @@ contract TrustlexPerAssetOrderBookExchange {
 
     address public txInclusionVerifierContract;
 
-    // mapping(uint256 offerId => mapping(uint256 fullfillmentId => FulfillmentRequest fullfillmentData))
-    mapping(uint256 => mapping(uint256 => FulfillmentRequest))
-        public initializedFulfillments;
+    mapping(uint256 => mapping(uint256 => SettlementRequest))
+        public initializedSettlements;
 
     mapping(uint256 => Offer) public offers;
 
@@ -96,17 +95,17 @@ contract TrustlexPerAssetOrderBookExchange {
 
     event NEW_OFFER(address indexed offeredBy, uint256 indexed offerId);
 
-    event INITIALIZED_FULFILLMENT(
+    event INITIALIZED_SETTLEMENT(
         address indexed claimedBy,
         uint256 indexed offerId,
-        uint256 indexed fulfillmentId
+        uint256 indexed settlementId
     );
 
-    event PAYMENT_SUCCESSFUL(
+    event SETTLEMENT_SUCCESSFUL(
         address indexed submittedBy,
         address indexed receivedBy,
         uint256 indexed offerId,
-        uint256  compactFulfillmentDetail,
+        uint256  compactSettlementDetail,
         bytes32 txHash,
         bytes32 outputHash,
         bytes32 secret
@@ -229,27 +228,27 @@ contract TrustlexPerAssetOrderBookExchange {
     }
 
 
-    function recoverExpiredFulfillments(uint256 offerId, uint256 fulfillmentId, Offer memory offer) private returns (Offer memory updatedOffer, bool fulfillmentExists )  {
-        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
-        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
-            FulfillmentRequest
-                memory existingFulfillmentRequest = initializedFulfillments[
+    function recoverExpiredSettlements(uint256 offerId, uint256 settlementId, Offer memory offer) private returns (Offer memory updatedOffer, bool settlementExists )  {
+        uint256[] memory settlementIds = offer.settlementRequests;
+        for (uint256 index = 0; index < settlementIds.length; index++) {
+            SettlementRequest
+                memory existingSettlementRequest = initializedSettlements[
                     offerId
-                ][fulfillmentIds[index]];
+                ][settlementIds[index]];
             if (
-                existingFulfillmentRequest.expiryTime < block.timestamp &&
-                existingFulfillmentRequest.isExpired == false &&
-                existingFulfillmentRequest.fulfilled == false
+                existingSettlementRequest.expiryTime < block.timestamp &&
+                existingSettlementRequest.isExpired == false &&
+                existingSettlementRequest.settled == false
             ) {
                 // Claim any satoshis reserved
-                offer.satoshisReserved -= existingFulfillmentRequest
+                offer.satoshisReserved -= existingSettlementRequest
                     .quantityRequested;
 
-                initializedFulfillments[offerId][fulfillmentIds[index]]
+                initializedSettlements[offerId][settlementIds[index]]
                     .isExpired = true;
             }
-            if (fulfillmentId == fulfillmentIds[index]) {
-                fulfillmentExists = true;
+            if (settlementId == settlementIds[index]) {
+                settlementExists = true;
             }
         }
         updatedOffer = offer;
@@ -257,112 +256,111 @@ contract TrustlexPerAssetOrderBookExchange {
 
     /**
 
-        Initiates the fulfillment
-        - Checks if there is an existing fulfillment
-        - Checks if there is an existing fulfillment
+        Initiates the settlement
+        - Checks if there is an existing settlement
+        - Checks if there is an existing settlement
 
      */
 
-    function initiateFulfillment(
+    function initiateSettlement(
         uint256 offerId,
-        FulfillmentRequest calldata _fulfillment,
+        SettlementRequest calldata _settlement,
         PaymentProof calldata proof
     ) public payable {
-        uint256 fulfillmentId = uint160(msg.sender);
+        uint256 settlementId = uint160(msg.sender);
         require(
              (
                 (
-                    (initializedFulfillments[offerId][fulfillmentId].fulfilledBy == address(0x0)) ||
-                    (initializedFulfillments[offerId][fulfillmentId].expiryTime > 0 && initializedFulfillments[offerId][fulfillmentId].expiryTime < block.timestamp)
+                    (initializedSettlements[offerId][settlementId].settledBy == address(0x0)) ||
+                    (initializedSettlements[offerId][settlementId].expiryTime > 0 && initializedSettlements[offerId][settlementId].expiryTime < block.timestamp)
                 ) &&
                 (
-                    (initializedFulfillments[offerId][fulfillmentId].fulfilled == false)
+                    (initializedSettlements[offerId][settlementId].settled == false)
                 )
              ),
-             "Cannot update an existing fulfillment or non-expired fulfillment"
+             "Cannot update an existing or non-expired settlement"
         );
-        CompactMetadata memory compact = deconstructMetadata();
         Offer memory offer = offers[offerId];
         uint64 satoshisToReceive = offer.satoshisToReceive;
         uint64 satoshisReserved = offer.satoshisReserved;
         uint64 satoshisReceived = offer.satoshisReceived;
 
-        bool fulfillmentExists = false;
-        (offer, fulfillmentExists) = recoverExpiredFulfillments(offerId, fulfillmentId, offer);
+        bool settlementExists = false;
+        (offer, settlementExists) = recoverExpiredSettlements(offerId, settlementId, offer);
         
         satoshisReserved = offer.satoshisReserved;
         if (
             !(satoshisToReceive >=
                 (satoshisReserved +
                     satoshisReceived +
-                    _fulfillment.quantityRequested))
+                    _settlement.quantityRequested))
         ) {
             revert ValidateOfferQuantity({
                 satoshisToReceive: satoshisToReceive,
                 satoshisReserved: satoshisReserved,
                 satoshisReceived: satoshisReceived,
-                quantityRequested: _fulfillment.quantityRequested
+                quantityRequested: _settlement.quantityRequested
             });
         }
-        FulfillmentRequest memory fulfillment = _fulfillment;
-        fulfillment.fulfilledBy = msg.sender;
-        fulfillment.isExpired = false;
-        fulfillment.fulfillRequestedTime = uint32(block.timestamp);
-        (bytes32 txId, bytes memory output) = validateProof(offerId, fulfillmentId, _fulfillment, proof);
-        fulfillment.txId = txId;
+        SettlementRequest memory settlement = _settlement;
+        settlement.settledBy = msg.sender;
+        settlement.isExpired = false;
+        settlement.settlementRequestedTime = uint32(block.timestamp);
+        (bytes32 txId, bytes memory output) = validateProof(offerId, settlementId, _settlement, proof);
+        settlement.txId = txId;
         bytes32 scriptOutputHash = sha256(bytes.concat(sha256(output)));
-        fulfillment.scriptOutputHash = scriptOutputHash;
+        settlement.scriptOutputHash = scriptOutputHash;
 
-        fulfillment.expiryTime =
+        settlement.expiryTime =
             uint32(block.timestamp) +
-            fullFillmentExpiryTime; 
-        initializedFulfillments[offerId][fulfillmentId] = fulfillment;
+            SETTLEMENT_COMPETION_WINDOW; 
+        initializedSettlements[offerId][settlementId] = settlement;
         // offers[offerId].satoshisReserved = offer.satoshisReserved;
         offers[offerId].satoshisReserved =
             offer.satoshisReserved +
-            _fulfillment.quantityRequested;
+            _settlement.quantityRequested;
 
-        if (fulfillmentExists) {
-            offers[offerId].fulfillmentRequests.push(fulfillmentId);
+        if (settlementExists) {
+            offers[offerId].settlementRequests.push(settlementId);
         }
-        emit INITIALIZED_FULFILLMENT(msg.sender, offerId, fulfillmentId);
+        emit INITIALIZED_SETTLEMENT(msg.sender, offerId, settlementId);
     }
 
     // get the initial fullfillments list
-    function getInitiatedFulfillments(
+    function getInitiatedSettlements(
         uint256 offerId
-    ) public view returns (ResultFulfillmentRequest[] memory) {
-        uint256[] memory fulfillmentIds = offers[offerId].fulfillmentRequests;
-        ResultFulfillmentRequest[]
-            memory resultFulfillmentRequest = new ResultFulfillmentRequest[](
-                fulfillmentIds.length
+    ) public view returns (ResultSettlementRequest[] memory) {
+        uint256[] memory settlementIds = offers[offerId].settlementRequests;
+        ResultSettlementRequest[]
+            memory resultSettlementRequest = new ResultSettlementRequest[](
+                settlementIds.length
             );
 
-        for (uint256 index = 0; index < fulfillmentIds.length; index++) {
-            FulfillmentRequest
-                memory existingFulfillmentRequest = initializedFulfillments[
+        for (uint256 index = 0; index < settlementIds.length; index++) {
+            SettlementRequest
+                memory existingSettlementRequest = initializedSettlements[
                     offerId
-                ][fulfillmentIds[index]];
-            resultFulfillmentRequest[index] = ResultFulfillmentRequest(
-                existingFulfillmentRequest,
-                fulfillmentIds[index]
+                ][settlementIds[index]];
+            resultSettlementRequest[index] = ResultSettlementRequest(
+                existingSettlementRequest,
+                settlementIds[index]
             );
         }
 
-        return resultFulfillmentRequest;
+        return resultSettlementRequest;
     }
 
-    function validateProof(uint256 offerId, uint256 fulfillmentId, FulfillmentRequest calldata fulfillmentRequest, PaymentProof calldata proof) private view returns (bytes32 txId, bytes memory scriptOutput) {
-        uint256 valueRequested = fulfillmentRequest
+    function validateProof(uint256 offerId, uint256 settlementId, SettlementRequest calldata settlementRequest, PaymentProof calldata proof) private view returns (bytes32 txId, bytes memory scriptOutput) {
+        uint256 valueRequested = settlementRequest
             .quantityRequested;
         scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV3(
                 address(this),
-                (offerId << 160) | fulfillmentId,
+                (offerId << 160) | settlementId,
                 offers[offerId].pubKeyHash,
                 offers[offerId].orderedTime,
-                fulfillmentRequest.recoveryPubKeyHash,
-                fulfillmentRequest.lockTime,
-                fulfillmentRequest.hashedSecret
+                settlementRequest.recoveryPubKeyHash,
+                settlementRequest.lockTime,
+                settlementRequest.hashedSecret
         );
         require(
             BitcoinTransactionUtils.hasOutput(
@@ -386,73 +384,83 @@ contract TrustlexPerAssetOrderBookExchange {
         );
     }
 
-    /*
-       revealHTLCSecret:
-
-       User reveals the HTLC secret.
-       Contract checks:
-        - If the given secret is valid
-        - Checks if the fulfillment has not expired. If it has expired, 
-    */
-    function revealHTLCSecret(
-        uint256 offerId,
-        HTLCReveal calldata htlcDetail
-    ) external {
-        uint256 fulfillmentId = uint160(msg.sender);
-        require(initializedFulfillments[offerId][fulfillmentId].expiryTime > block.timestamp, "Fulfillment has expired");
-        require(sha256(bytes.concat(sha256(bytes.concat(htlcDetail.secret)))) == initializedFulfillments[offerId][fulfillmentId].hashedSecret, "Hashed secret doesn't match");
-        CompactMetadata memory compact = deconstructMetadata();
-        require(
-            initializedFulfillments[offerId][fulfillmentId].fulfilledTime == 0,
-            "fulfilledTime should be 0"
-        );
-        // add  check whether order is expired or not
-        require(
-            initializedFulfillments[offerId][fulfillmentId].expiryTime >=
-                block.timestamp,
-            "Fulfillment has expired"
-        );
-
-        offers[offerId].satoshisReceived += initializedFulfillments[offerId][
-            fulfillmentId
+    function settleOffer(uint256 offerId, uint256 settlementId) private {
+        offers[offerId].satoshisReceived += initializedSettlements[offerId][
+            settlementId
         ].quantityRequested;
-        offers[offerId].satoshisReserved -= initializedFulfillments[offerId][
-            fulfillmentId
+        offers[offerId].satoshisReserved -= initializedSettlements[offerId][
+            settlementId
         ].quantityRequested;
+    }
 
-        initializedFulfillments[offerId][fulfillmentId].fulfilledTime = uint32(
+    function settleSettlement(uint256 offerId, uint256 settlementId) private {
+        initializedSettlements[offerId][settlementId].settledTime = uint32(
             block.timestamp
         );
+        initializedSettlements[offerId][settlementId]
+            .settled = true;
+    }
+
+    function settleFunds(uint256 offerId, uint256 settlementId, address tokenContract) private {
         // Send ETH / TOKEN on success
         uint256 payAmountETh = (
-            initializedFulfillments[offerId][fulfillmentId].quantityRequested
+            initializedSettlements[offerId][settlementId].quantityRequested
         ) * (offers[offerId].offerQuantity / offers[offerId].satoshisToReceive);
-        if (compact.tokenContract == address(0x0)) {
+        if (tokenContract == address(0x0)) {
             bool success = payable(
                 msg.sender
             ).send(payAmountETh);
             require(success, "Transfer failed");
         } else {
-            IERC20(compact.tokenContract).transfer(
+            IERC20(tokenContract).transfer(
                 msg.sender,
                 payAmountETh
             );
         }
-        initializedFulfillments[offerId][fulfillmentId]
-            .fulfilled = true;
-         uint64 quantityRequested =   initializedFulfillments[offerId][fulfillmentId]
+    }
+    /*
+       settleFunds:
+
+       User reveals the HTLC secret.
+       Contract checks:
+        - If the given secret is valid
+        - Checks if the settlement has not expired
+        - checks if it was not settled before
+    */
+    function settle(
+        uint256 offerId,
+        HTLCReveal calldata htlcDetail
+    ) external {
+        uint256 settlementId = uint160(msg.sender);
+        require(initializedSettlements[offerId][settlementId].settledBy == msg.sender, "Settlement should exist");
+        require(initializedSettlements[offerId][settlementId].expiryTime > block.timestamp, "Settlement has expired");
+        require(
+            sha256(bytes.concat(sha256(bytes.concat(htlcDetail.secret)))) == initializedSettlements[offerId][settlementId].hashedSecret, 
+            "Hashed secret doesn't match"
+        );
+        require(
+            initializedSettlements[offerId][settlementId].settled == false,
+            "Should not have settled before"
+        );
+
+        CompactMetadata memory compact = deconstructMetadata();
+        settleOffer(offerId, settlementId);
+        settleSettlement(offerId, settlementId);
+        settleFunds(offerId, settlementId, compact.tokenContract);
+        // settleFees
+
+        uint64 quantityRequested =   initializedSettlements[offerId][settlementId]
             .quantityRequested;
             
-        emit PAYMENT_SUCCESSFUL(
+        emit SETTLEMENT_SUCCESSFUL (
             msg.sender, 
             offers[offerId].offeredBy,
             offerId, 
-            (quantityRequested | (uint256(uint160(initializedFulfillments[offerId][fulfillmentId].recoveryPubKeyHash)) << (28 * 8))),
-            initializedFulfillments[offerId][fulfillmentId].txId,
-            initializedFulfillments[offerId][fulfillmentId].scriptOutputHash,
+            (quantityRequested | (uint256(uint160(initializedSettlements[offerId][settlementId].recoveryPubKeyHash)) << (28 * 8))),
+            initializedSettlements[offerId][settlementId].txId,
+            initializedSettlements[offerId][settlementId].scriptOutputHash,
             htlcDetail.secret
         );
-        
     }
 
     function addEthCollateral() public payable {}
@@ -480,10 +488,10 @@ contract TrustlexPerAssetOrderBookExchange {
         require(offeredBy == msg.sender, "Offer creator can only cancel offer");
         uint64 returnAbleAmountSatoshi;
 
-        uint256[] memory fulfillmentIds = offer.fulfillmentRequests;
+        uint256[] memory settlementIds = offer.settlementRequests;
         uint256 payAmount;
         // if offer has no fullfillment orders
-        if (fulfillmentIds.length == 0) {
+        if (settlementIds.length == 0) {
             returnAbleAmountSatoshi = satoshisToReceive;
             offers[offerId].isCanceled = true;
             payAmount =
@@ -494,21 +502,21 @@ contract TrustlexPerAssetOrderBookExchange {
             // if offer has  fullfillments order
 
             // Update satoshisReserved amount  for expired order
-            for (uint256 index = 0; index < fulfillmentIds.length; index++) {
-                FulfillmentRequest
-                    memory existingFulfillmentRequest = initializedFulfillments[
+            for (uint256 index = 0; index < settlementIds.length; index++) {
+                SettlementRequest
+                    memory existingSettlementRequest = initializedSettlements[
                         offerId
-                    ][fulfillmentIds[index]];
+                    ][settlementIds[index]];
                 if (
-                    existingFulfillmentRequest.expiryTime < block.timestamp &&
-                    existingFulfillmentRequest.isExpired == false &&
-                    existingFulfillmentRequest.paymentProofSubmitted == false
+                    existingSettlementRequest.expiryTime < block.timestamp &&
+                    existingSettlementRequest.isExpired == false &&
+                    existingSettlementRequest.paymentProofSubmitted == false
                 ) {
                     // Decrease the off satoshi resvered amou t for expired
-                    offer.satoshisReserved -= existingFulfillmentRequest
+                    offer.satoshisReserved -= existingSettlementRequest
                         .quantityRequested;
 
-                    initializedFulfillments[offerId][fulfillmentIds[index]]
+                    initializedSettlements[offerId][settlementIds[index]]
                         .isExpired = true;
                 }
             }
