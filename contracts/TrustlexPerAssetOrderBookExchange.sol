@@ -293,7 +293,7 @@ contract TrustlexPerAssetOrderBookExchange {
             _settlement.quantityRequested;
     }
 
-    function _checkInvariant(Offer memory offer, uint64 quantityRequested) private view {
+    function _checkRequestedQuantityIsAvailable(Offer memory offer, uint64 quantityRequested) private view {
         require(offer.satoshisToReceive >=
                 (offer.satoshisReserved +
                     offer.satoshisReceived +
@@ -315,7 +315,7 @@ contract TrustlexPerAssetOrderBookExchange {
         bool settlementExists = false;
         (offer, settlementExists) = _recoverExpiredSettlements(offerId, settlementId, offer);
         
-        _checkInvariant(offer, _settlement.quantityRequested);
+        _checkRequestedQuantityIsAvailable(offer, _settlement.quantityRequested);
         _initiateSettlement(offerId, settlementId, offer, _settlement, txId, scriptOutputHash);
         if (!settlementExists) {
             offers[offerId].settlementRequests.push(settlementId);
