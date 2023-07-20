@@ -3,6 +3,7 @@ var BitcoinTransactionUtils = artifacts.require("BitcoinTransactionUtils");
 var SafeMath = artifacts.require('SafeMath');
 var TrustedBitcoinSPVChain = artifacts.require('TrustedBitcoinSPVChain');
 var TrustlexPerAssetOrderBook = artifacts.require('TrustlexPerAssetOrderBook');
+var TrustlexPerAssetOrderBookExchange = artifacts.require('TrustlexPerAssetOrderBookExchange');
 
 module.exports = async function(deployer, network, accounts) {
   // Deploy the SolidityContract contract as our only task
@@ -12,8 +13,8 @@ module.exports = async function(deployer, network, accounts) {
   await deployer.deploy(TrustedBitcoinSPVChain,  {from: accounts[5]}); // 0xb0Ce2d7Ec616608EE2E48603Bee64C1765826145
   await deployer.deploy(SafeMath,  {from: accounts[5]});
   await deployer.deploy(BitcoinTransactionUtils,  {from: accounts[5]});
-  TrustlexPerAssetOrderBook.link(await BitcoinTransactionUtils.deployed());
-  TrustlexPerAssetOrderBook.link(await SafeMath.deployed());
+  TrustlexPerAssetOrderBookExchange.link(await BitcoinTransactionUtils.deployed());
+  TrustlexPerAssetOrderBookExchange.link(await SafeMath.deployed());
   //console.log((await TrustedBitcoinSPVChain.deployed()).address);
-  await deployer.deploy(TrustlexPerAssetOrderBook, '0x0000000000000000000000000000000000000000', (await TrustedBitcoinSPVChain.deployed()).address,  {from: accounts[5]});
+  await deployer.deploy(TrustlexPerAssetOrderBookExchange, '0x0000000000000000000000000000000000000000', (await TrustedBitcoinSPVChain.deployed()).address,  {from: accounts[5]});
 };
