@@ -23,6 +23,8 @@ contract TrustlexPerAssetOrderBookExchange {
 
     uint32 public constant CLAIM_PERIOD = 7 * 24 * 60 * 60; // 7 days
 
+    uint32 public constant BTC_RECOVERY_PERIOD_START = 2 * 24 * 60 * 60; // 2 days
+
     // Structs
     struct SettlementRequest {
         address settledBy; // msg.sender
@@ -349,6 +351,8 @@ contract TrustlexPerAssetOrderBookExchange {
 
     function _validateSettlementProof(uint256 offerId, uint256 settlementId, SettlementRequest calldata settlementRequest, PaymentProof calldata proof) 
             private view returns (bytes32 txId, bytes32 scriptOutputHash) {
+        // Check if the lockTime is more than the allowed recovery period
+        require(settlementRequest.lockTime >= offers[offerId].offerValidTill + BTC_RECOVERY_PERIOD_START, "Insufficient lockTime window");
         uint256 valueRequested = settlementRequest
             .quantityRequested;
         bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV3(
