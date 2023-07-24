@@ -355,13 +355,14 @@ contract TrustlexPerAssetOrderBookExchange {
         require(settlementRequest.lockTime >= offers[offerId].offerValidTill + BTC_RECOVERY_PERIOD_START, "Insufficient lockTime window");
         uint256 valueRequested = settlementRequest
             .quantityRequested;
+        uint256 orderLockTime = uint256(settlementRequest.lockTime) << 32 | uint256(offers[offerId].orderedTime);
         bytes memory scriptOutput = BitcoinTransactionUtils.getTrustlexScriptV3(
                 address(this),
-                (offerId << 160) | settlementId,
+                offerId,
                 offers[offerId].pubKeyHash,
-                offers[offerId].orderedTime,
+                msg.sender,
                 settlementRequest.recoveryPubKeyHash,
-                settlementRequest.lockTime,
+                orderLockTime,
                 settlementRequest.hashedSecret
         );
         require(

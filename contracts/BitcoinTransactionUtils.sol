@@ -87,6 +87,25 @@ library BitcoinTransactionUtils {
         );
     }
 
+    function getOfferFulfillmentId(uint256 offerId, address settlementId) public view returns (uint256 result) {
+        result = (offerId << 160) | (uint256(uint160(settlementId)));
+    }
+
+    function getOfferFulfillmentId1(uint256 _data) public view returns (uint256 data) {
+        data = _data;
+    }
+
+
+    function getOrderData(address contractId, 
+        uint256 orderId,
+        address settlementId, 
+        bytes20 pubkeyHash, 
+        uint256 orderLockTime
+    ) public view returns (bytes memory result) {
+        bytes20 _settlementId = bytes20(settlementId);
+        result = bytes.concat(bytes20(contractId), bytes32(orderId), _settlementId, pubkeyHash, bytes32(orderLockTime & ((1<<32) - 1)));
+    }
+
     /*
      This is based on HTLC, and is secure to transact. 
      - User that sends to this address has a way to recover the funds after a few days.
@@ -94,13 +113,13 @@ library BitcoinTransactionUtils {
     */
     function getTrustlexScriptV3(
         address contractId, 
-        uint256 orderFulfillmentId, 
+        uint256 orderId, 
         bytes20 pubkeyHash, 
-        uint256 orderTime, 
+        address settlementId, 
         bytes20 redeemerPubkeyHash, 
-        uint32 lockTime, 
-        bytes32 hashedSecret) public pure returns (bytes memory) {
-        bytes32 hashedOrderId = keccak256(bytes.concat(bytes20(contractId), bytes32(orderFulfillmentId >> (160)), bytes32(orderFulfillmentId & ((1 << 160 - 1))), pubkeyHash, bytes32(orderTime)));
+        uint256 orderTimeLockTime, 
+        bytes32 hashedSecret) public view returns (bytes memory) {
+        bytes32 hashedOrderId = keccak256( getOrderData(contractId, orderId, settlementId, pubkeyHash, orderTimeLockTime));
         bytes4 shortOrderId = bytes4(hashedOrderId);
         bytes memory script = bytes.concat(
             bytes1(0x04), // length of order id
@@ -110,11 +129,13 @@ library BitcoinTransactionUtils {
             bytes5(0x87637caa20), // OP_EQUAL OP_IF OP_SWAP OP_HASH256  LENGTH_OF_HASHEDSECRET
             hashedSecret,
             bytes2(0x8867), // OP_EQUALVERIFY OP_ELSE
-            encodeNumber(lockTime), // timestamp 
+            encodeNumber(orderTimeLockTime >> 32), // timestamp 
             bytes5(0xb17576a914), // OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP  OP_HASH160 LENGTH_OF_PUBKEY_HASH
             bytes20(redeemerPubkeyHash), // Redeemer public key
             bytes3(0x8868ac) // OP_EQUALVERIFY OP_ENDIF OP_CHECKSIG
         );
+        // 0x04c23822d57576a9145dc01d1e963e4adc1613734882a1b365bb9f6adc87637caa20d211d5267e30db3379db6d1fd58054721c70ab74e5fabe0caf1d504319e2d16f886704436bc364b17576a9145dc01d1e963e4adc1613734882a1b365bb9f6adc8868ac
+        // 0x04c23822d57576a9145dc01d1e963e4adc1613734882a1b365bb9f6adc87637caa20d211d5267e30db3379db6d1fd58054721c70ab74e5fabe0caf1d504319e2d16f886704436bc364b17576a9145dc01d1e963e4adc1613734882a1b365bb9f6adc8868ac
         //return script;
         //emit BYTES(script);
         return bytes.concat(
