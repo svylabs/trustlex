@@ -15,9 +15,10 @@
         - [Submit payment proof](#submit-payment-proof)
         - [Reveal secret to withdraw funds](#reveal-secret-to-withdraw-funds)
 - [Bitcoin Header Chain](#bitcoin-header-chain)
-- [Incentivzation](#incentivization)
+- [Incentivization](#incentivization)
     - [Bitcoin Light Client](#bitcoin-light-client)
     - [Liquidity Providers](#liquidity-providers)
+- [Tokenomics](#tokenomics)
 - [Security](#security)
 - [Use cases](#use-cases)
 - [Roadmap](#roadmap)
@@ -223,15 +224,15 @@ The contract also has a function to verify transaction inclusion proof that can 
 
 ## Bitcoin Light Client
 
-While the exchange usecase doesn't require any incentive as the incentive to use the platform is to trustlessly perform the exchange. The exchange process assumes the availability of Bitcoin light client with updated Bitcoin block headers. To incentivse anyone to post Bitcoin block headers to smart contracts, the contract initially offers '42' TLX tokens, reducing by half every month, until the incentive reaches 0.01 TLX tokens. At which point, the incentive remains constant at 0.01 TLX tokens for every block submitted.
+While the exchange usecase doesn't require any incentive as the incentive to use the platform is to trustlessly perform the exchange, the exchange process assumes the availability of Bitcoin light client with updated Bitcoin block headers. To incentivse anyone to post Bitcoin block headers to smart contracts, the contract issues TLX tokens to anyone that submits block headers and the block gets confirmed.
 
 TLX tokens are used in the following scenario:
-- Users can burn their TLX tokens to redeem any fees collected by the offer book contracts.
+- Users can burn their TLX tokens to redeem any proportional fees collected by the offer book contracts.
 - Use the TLX tokens to vote on governance proposals 
     * To create new Offer book contracts
     * To resolve any unresolved forks in Bitcoin header chain contracts
 
-This mechanism ensures, the Bitcoin light client is maintained by a community of participants.
+This mechanism ensures, there is enough incentive for community to participate in adding new Bitcoin block headers.
 
 ## Liquidity Providers
 
@@ -242,6 +243,21 @@ The protocol identifies liquidity providers by the frequency of their trades. In
 Here is a summary on how fee is distributed between the protocol and LP providers:
 
 ![Fee Distribution](./images/fee_distribution.png)
+
+# Tokenomics
+
+The contract initially offers '42' TLX tokens for each block submitted, reducing the incentive by half every month, until the incentive reaches 0.01 TLX tokens per block submitted. At which point, the incentive remains constant at 0.01 TLX tokens for every block submitted.
+
+* There are no pre-mines of TLX tokens.
+* There are no supply cap of TLX tokens.
+* There is a burning mechanism of TLX tokens where user can burn TLX token to redeem any proportional fees accrued by the protocol. This is a one time incentive for token holder.
+
+Other incentives:
+
+* The protocol issues 20x the token reward when someone posts a fork block header. This is to incentivse
+* The protocol also inflates the token supply by 1% and sends it back to the wallet which originated the governance action. It is upto the external contract to distribute the governance proceeds to wallets that voted for a governance action. The following constitutes a governance action:
+- creating a new offerbook for BTC-token pair.
+- resolving a Bitcoin chain fork
    
 # Security
 
