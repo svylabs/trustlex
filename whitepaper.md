@@ -148,9 +148,18 @@ The contract locks the requested amount of ETH / ERC20 from the offer for 15 min
 
 ### Finalize Settlement
 
-During `finalizeSettlement`, the secret is revealed, using which the user placing the offer can spend the Bitcoin received. The reason to have the settlement process as two step process is to ensure security of the transaction. During the 15 minutes lock window, the following cannot happen
+During `finalizeSettlement`, the secret is revealed, using which the user placing the offer can spend the Bitcoin received.  The contract verifies if the `hashedSecret` passed during `initiateSettlement` matches with the `hash256(`secret`)` before releasing the funds.
+
+The reason to have the settlement process as two step process is to ensure security of the transaction. During the 15 minutes lock window, the following cannot happen
 - Offer cannot be canceled by the user offering ETH.
 - Any other user is unable initiateSettlement for the selected amount of ETH / ERC20.
+
+```
+  function finalizeSettlement(
+        uint256 offerId,
+        HTLCSecret calldata htlcSecret
+    )
+```
 
 # Bitcoin Header Chain
 
