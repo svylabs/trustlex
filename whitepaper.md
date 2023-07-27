@@ -27,13 +27,13 @@
 
 # Abstract
 
-A smart contract based protocol allows trustless exchange of Native Bitcoin with assets on Ethereum and other networks and vice-versa, where the funds on either side would be in control of the users themselves, and not any custodian. While solutions using centralized custodian of funds, and threshold-signature-scheme based custodians offer such an exchange at scale, the main benefit would be lost if the funds were still to be held by a custodian. Custodians have to ensure they are always online, not hacked, and should be trusted by the users. Atomic cross chain swaps offer part of the solution where users can exchange trustlessly in a self-custodial manner. But the main drawback of the atomic swap solution is in the UX. It is not intuitive enough for the users, order discoverability is hard and the users need to be online, monitor the transactions on either chain to complete the swap. In our work, we take smart contract elements from atomic swaps, use an orderbook based exchange on Ethereum, and have Bitcoin light client within Ethereum smart contracts to enable trustless swaps in a self-custodial manner, and with much better user experience - better order discoverability, allowing for fractional swaps, Bitcoin transactions are verified using smart contracts, instead of manually checking the chain and importantly where the funds are in control by the users at all times.
+A smart contract based protocol allows trustless exchange of Native Bitcoin with assets on Ethereum and other networks and vice-versa, where the funds on either side would be in control of the users themselves, and not any custodian. While solutions using centralized custodian of funds, and threshold-signature-scheme based custodians offer such an exchange at scale, the main benefit would be lost if the funds were still to be held by a custodian. Custodians have to ensure they are always online, not hacked, and should be trusted by the users. Atomic cross chain swaps offer part of the solution where users can exchange trustlessly in a self-custodial manner. But the main drawback of the atomic swap solution is in the UX. It is not intuitive enough for the users, order discoverability is hard and the users need to be online, monitor the transactions on either chain to complete the swap. In our work, we take smart contract elements from atomic swaps, use an orderbook based exchange on Ethereum, and have Bitcoin light client within Ethereum smart contracts to enable trustless swaps in a self-custodial manner, and with much better user experience - better order discoverability, allowing for fractional swaps, Bitcoin transactions can be automatically verified using smart contracts, instead of users manually checking the chain and importantly where the funds are in control by the users at all times.
  
 # Introduction
 
 Decentralized exchanges have exploded in popularity in recent years and is often beating centralized exchanges in terms of volume. However, it is still not possible to exchange Bitcoin with assets on other chains in a trustless manner. People often resort to centralized exchanges or have to park their funds with a custodian run using threshold-signature-scheme. While these solutions offers better user experience and scalable exchange experience, the main drawback is the centralized nature of such a scheme and users do not have control over their funds at all times. As we have seen several times, centralized exchanges do not maintain full reserves of the user funds, could get hacked and threshold signature scheme based solutions are also based on trust that the participants in the scheme would not collude to steal user funds and the threshold is often limited to a few tens of users. Atomic swaps are a solution to this problem, but the user experience is poor due to issues with peer / order discoverability, fractional swaps are not possible, and users have to be online to complete the swap.
 
-In this work, we propose a non-custodial solution to the problem of enabling trustless swaps from Bitcoin to assets on Ethereum(or other networks), where the funds are always in control by the users and reach the conclusion how our solution offers much better user experience than other trustless swapping solutions like atomic swaps and why this protocol is suitable for trustless swaps involving large orders(eg: OTC markets) compared to having BTC custodied by custodians run by threshold-signature-schemes.
+In this work, we propose a self-custodial solution to the problem of enabling trustless swaps from Bitcoin to assets on Ethereum(or other networks), where the funds are always in control by the users and reach the conclusion how our solution offers much better user experience than other trustless swapping solutions like atomic swaps and why this protocol is suitable for trustless swaps involving large orders(eg: OTC markets) compared to having BTC custodied by custodians run by threshold-signature-schemes.
 
 # Background
 
@@ -248,8 +248,8 @@ Here is a summary on how fee is distributed between the protocol and LP provider
 
 The contract initially offers '42' TLX tokens for each block submitted, reducing the incentive by half every month, until the incentive reaches 0.01 TLX tokens per block submitted. At which point, the incentive remains constant at 0.01 TLX tokens for every block submitted.
 
-* There are no pre-mines of TLX tokens.
-* There are no supply cap of TLX tokens.
+* There is no pre-mine of TLX tokens.
+* There is no supply cap of TLX tokens.
 * There is a burning mechanism of TLX tokens where user can burn TLX token to redeem any proportional fees accrued by the protocol. This is a one time incentive for token holder.
 
 Other incentives:
@@ -274,11 +274,11 @@ There are no new cryptographic operations developed or used. We are using standa
 
 ## Bitcoin Script
 
-We have independently ensured the Custom Bitcoin script that we have developed to enable the exchange protocol is secure and cannot result in losing coins.
+We have independently ensured the custom Bitcoin script that we have developed to enable the exchange protocol is secure and cannot result in losing coins.
 
 ## Smart Contract security
 
-We have implemented tests to ensure funds are accessible and not locked by smart contract. We plan to undergo an external Audit to ensure the smart contract is secure.
+We have implemented tests to ensure funds are accessible and not locked by smart contract. We plan to undergo an external audit to ensure the smart contract is secure.
 
 # Use cases
 
@@ -294,8 +294,8 @@ While the usecase we have presented is for trustless exchange of ETH or ERC20 to
 1. Launch Trustlex Offer Book to enable Native BTC <=> ETH conversion using centralized Bitcoin Header Chain oracle (August 2023)
 2. Launch Trustlex Offer Book to enable Native BTC <=> WBTC conversion using centralized Bitcoin header Chain oracle (August 2023)
 3. Launch Incentivized Bitcoin Header Chain and create new offer book contracts for various pairs. (September 2023)
-4. Launch Incentivized Bitcoin Header chain on other platforms supporting EVM (Avalanche, Arbitrum, Tezos) (September 2023 onwards)
-5. Launch Incentivized Bitcoin Header and exchange contracts on Non-EVM platforms (Near, Solana, Tezos mainnet) (January 2024)
+4. Launch Incentivized Bitcoin Header chain on other platforms supporting EVM (Arbitrum, Avalanche, Tezos) (September 2023 onwards)
+5. Launch Incentivized Bitcoin Header and exchange contracts on Non-EVM platforms (Osmosis, Near, Tezos mainnet) (January 2024)
 6. Launch lending application with Bitcoin as collateral by custodying Bitcoin using Threshold Signature Scheme (January 2024)
 
 # Future work
