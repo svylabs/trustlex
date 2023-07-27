@@ -152,7 +152,6 @@ library BitcoinTransactionUtils {
     
         uint inputsCount;
         (inputsCount, offset) = parseVarInt(transactionData, offset);
-        require(inputsCount == 1, "Input counts is not 1");
 
         for (uint i = 0; i < inputsCount; i++) {
             //TransactionInput memory input;
@@ -177,7 +176,6 @@ library BitcoinTransactionUtils {
 
         uint outputsCount;
         (outputsCount, offset) = parseVarInt(transactionData, offset);
-        require(outputsCount == 2, "Output counts is not 2");
 
         for (uint i = 0; i < outputsCount; i++) {
             //TransactionOutput memory output;
