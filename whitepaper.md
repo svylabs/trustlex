@@ -54,6 +54,8 @@ Let's say there are two parties Alice and Bob. Alice has ETH on Ethereum, and Bo
 
 # Solution (Protocol)
 
+A smart contract on Ethereum acts as a centralized order book, containing all offers of Ethereum and the price and the amount of ETH the user is willing to sell in exchange for BTC. Orders can be discovered through the orderbook, and settled on Bitcoin chain by generating a Bitcoin unique address for settlement, where the Bitcoin will be sent. Smart contract will release the funds after user has submitted the proof of transaction. Following is the exact set of steps each actor will take in this process:
+
 - Step 1: Alice places her ETH locked into a smart contract, along with BTC address where Alice wants to receive BTC.
 - Step 2: Bob discovers the smart contract and finds funds in the smart contract that could be obtained by sending BTC.
 - Step 3: Bob generates a secret, hashes the secret and generates a HTLC address using Alice's address, along with his own address for recovery after a certain time period.
