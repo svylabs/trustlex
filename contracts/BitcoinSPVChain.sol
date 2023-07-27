@@ -5,7 +5,6 @@ import {ERC20} from "./ERC20.sol";
 import {ISPVChain, ITxVerifier, BlockHeader, IGov} from "./ISPVChain.sol";
 import {BitcoinUtils} from "./BitcoinUtils.sol";
 
-
 contract BitcoinSPVChain is ERC20, ISPVChain, ITxVerifier, IGov {
 
   using SafeMath for uint256;

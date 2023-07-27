@@ -6,7 +6,7 @@ A smart contract based protocol allows trustless exchange of Native Bitcoin to a
 
 Decentralized exchanges have exploded in popularity in recent years and is often beating centralized exchanges in terms of volume. However, it is still not possible to exchange Bitcoin with assets on other chains in a trustless manner. People often resort to centralized exchanges or have to park their funds with a custodian run using threshold-signature-scheme. While these solutions offers better user experience and scalable exchange experience, the main drawback is the centralized nature of such a scheme and users do not have control over their funds at all times. As we have seen several times, centralized exchanges do not maintain full reserves of the user funds, could get hacked and threshold signature scheme based solutions are also based on trust that the participants in the scheme would not collude to steal user funds and the threshold is often limited to a few tens of users. Atomic swaps are a solution to this problem, but the user experience is poor due to issues with peer / order discoverability, fractional swaps are not possible, and users have to be online to complete the swap.
 
-In this work, we propose a non-custodial solution to the problem of enabling trustless swaps from Bitcoin to assets on Ethereum(or other networks), where the funds are always in control by the users and reach the conclusion how our solution offers much better user experience than other trustless swapping solutions like atomic swaps and why this protocol is suitable for trustless swaps involving large orders compared to having BTC custodied by custodians run by threshold-signature-schemes.
+In this work, we propose a non-custodial solution to the problem of enabling trustless swaps from Bitcoin to assets on Ethereum(or other networks), where the funds are always in control by the users and reach the conclusion how our solution offers much better user experience than other trustless swapping solutions like atomic swaps and why this protocol is suitable for trustless swaps involving large orders(eg: OTC markets) compared to having BTC custodied by custodians run by threshold-signature-schemes.
 
 # Background
 
@@ -38,13 +38,41 @@ Let's say there are two parties Alice and Bob. Alice has ETH on Ethereum, and Bo
 
 ![Protocol](./images/protocol.svg)
 
+This protocol assumes that the Trustlex contract has access to Bitcoin block headers. Thus, a part of the solution is also to have a separate contract track Bitcoin block headers on Ethereum which is discussed in the [Bitcoin Header Chain](#bitcoin-header-chain) section.
+
 # Technical Details
 
+# Bitcoin Header Chain
+
+A smart contract on Ethereum is initialized that keeps track of Bitcoin block headers. Instead of tracking all Bitcoin block headers, the contract would be initialized to start tracking Bitcoin block header at a recent height.
+
+```
+   constructor(bytes memory initialConfirmedBlockHeader, uint32 height, uint32 _initialEpochTime) {
+       // parse header bytes and store the header data.
+       // _initialEpochTime - will be used to compute the next proof of work target at the end of current epoch(2 weeks).
+   }
+```
+
+The contract has a function to submit block headers. This function can be used by anyone to augment the chain by posting the next Bitcoin block header that will be validated by the smart contract.
+
+```
+   function submitBlock(bytes calldata blockHeader) external {
+       // validate block header
+       // store merkle root, block hash, block height, timestamp(to calculate proof of work epoch)
+   }
+```
+
+The contract also has a function to verify transaction inclusion proof that can be used by the applications to verify if a Bitcoin transaction was included in a block or not.
+
+```
+   function verifyTxInclusionProof(bytes32 txId, uint32 blockHeight, uint256 index, bytes calldata hashes) external view returns (bool result) {
+     // Verifies txId is available in block at height blockHeight and the proof comprise the index and merklepath (hashes).
+   }
+```
+
+# Incentivization
+
 # Security
-
-# DAO
-
-# Tokenomics
 
 # Use cases
 
