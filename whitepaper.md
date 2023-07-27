@@ -215,9 +215,28 @@ Here is a summary on how fee is distributed between the protocol and LP provider
    
 # Security
 
+## Security of Funds
+
+In the protocol discussed, funds are always held by private keys of the owners. There are no centralized entities or multisig holding the funds.
+
+On the Bitcoin side: Funds are locked in HTLC contract and can be withdrawn at the conclusion of the protocol.
+On Ethereum side: Funds are locked in Smart contract and can be withdrawn at anytime or at the conclusion of the protocol.
+
+## Security of Cryptographic operations
+
+There are no new cryptographic operations developed or used. We are using standard cryptographic libraries and standard cryptographic operations to enable a trustless cross chain swaps.
+
+## Bitcoin Script
+
+We have independently ensured the Custom Bitcoin script that we have developed to enable the exchange protocol is secure and cannot result in losing coins.
+
+## Smart Contract security
+
+We have implemented tests to ensure funds are accessible and not locked by smart contract. We plan to undergo an external Audit to ensure the smart contract is secure.
+
 # Use cases
 
-While the usecase we have presented is for trustless exchange of ETH or ERC20 tokens with Bitcoin which can be used by the following applications:
+While the usecase we have presented is for trustless exchange of ETH or ERC20 tokens with Bitcoin, the Bitcoin light client infrastructure can also be used by the following applications:
 1. Trustless wbtc to native BTC conversion.
 2. Trustless OTC exchange markets between Bitcoin and assets on Ethereum network.
 3. Use Native Bitcoin to purchase NFT on Ethereum without intermediaries or intermediary tokens.
@@ -226,7 +245,16 @@ While the usecase we have presented is for trustless exchange of ETH or ERC20 to
 6. Stablecoin protocol with Native Bitcoin as collateral. This requires a custodian backed by threshold signature scheme to hold funds.
 
 # Roadmap
+1. Launch Trustlex Offer Book to enable Native BTC <=> ETH conversion using centralized Bitcoin Header Chain oracle (August 2023)
+2. Launch Trustlex Offer Book to enable Native BTC <=> WBTC conversion using centralized Bitcoin header Chain oracle (August 2023)
+3. Launch Incentivized Bitcoin Header Chain and create new offer book contracts for various pairs. (September 2023)
+4. Launch Incentivized Bitcoin Header chain on other platforms supporting EVM (Avalanche, Arbitrum, Tezos) (September 2023 onwards)
+5. Launch Incentivized Bitcoin Header and exchange contracts on Non-EVM platforms (Near, Solana, Tezos mainnet) (January 2024)
+6. Launch lending application with Bitcoin as collateral by custodying Bitcoin using Threshold Signature Scheme (January 2024)
 
-# Risks & Challenges
+# Future work
+1. Evaluate and Integrate Decentralized ID solutions to comply with local regulations (eg: MiCA).
 
 # Conclusion
+
+We have presented how the Trustlex exchange protocol works, the variations to the existing technologies like HTLC, Atomic Swap, BTCRelay that we have developed to enable such a protocol enabling better user experience for self-custodial exchange between Bitcoin and assets in the Ethereum network.
