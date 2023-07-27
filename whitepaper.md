@@ -26,17 +26,17 @@ Let's say there are two parties Alice and Bob. Alice has ETH on Ethereum, and Bo
 
 # Solution (Protocol)
 
-Step 1: Alice places her ETH locked into a smart contract, along with BTC address where Alice wants to receive BTC.
-Step 2: Bob discovers the smart contract and finds funds in the smart contract that could be obtained by sending BTC.
-Step 3: Bob generates a secret, hashes the secret and generates a HTLC address using Alice's address, along with his own address for recovery after a certain time period.
-Step 4: Bob sends BTC to the HTLC address
-Step 5: Bob waits a few confirmations on BTC block, generates merkle proof of the transaction and submits to the contract
-Step 7: Contract verifies the merkle proof and locks the ETH for 15 minutes
-Step 8: Bob now sends the plaintext secret to the smart contract that Alice can use to unlock funds.
-Step 8: Contract verifies if it's a valid secret and releases the ETH funds to Bob.
-Step 9: Alice can spend funds from BTC address using the secret.
+- Step 1: Alice places her ETH locked into a smart contract, along with BTC address where Alice wants to receive BTC.
+- Step 2: Bob discovers the smart contract and finds funds in the smart contract that could be obtained by sending BTC.
+- Step 3: Bob generates a secret, hashes the secret and generates a HTLC address using Alice's address, along with his own address for recovery after a certain time period.
+- Step 4: Bob sends BTC to the HTLC address
+- Step 5: Bob waits a few confirmations on BTC block, generates merkle proof of the transaction and submits to the contract
+- Step 7: Contract verifies the merkle proof and locks the ETH for 15 minutes
+- Step 8: Bob now sends the plaintext secret to the smart contract that Alice can use to unlock funds.
+- Step 8: Contract verifies if it's a valid secret and releases the ETH funds to Bob.
+- Step 9: Alice can spend funds from BTC address using the secret.
 
-(Protocol)[./protocol.svg]
+![Protocol](./protocol.svg)
 
 # Technical Details
 
