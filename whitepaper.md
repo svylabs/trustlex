@@ -42,6 +42,116 @@ This protocol assumes that the Trustlex contract has access to Bitcoin block hea
 
 # Technical Details
 
+## OfferBook contract
+
+An offer book contract holds all the available offers. 
+
+## Adding an Offer
+
+Adding an offer is a simple process. Users decide how much ETH(or ERC20) they want to sell and at what price. User also has to specify a 20-byte `pubKeyHash` that will be used to spend the received Bitcoins along with an offerValidFor
+
+```
+  addOffer(
+        uint256 offerValue, // Amount of ETH or ERC20 
+        uint64 satoshisToReceive, // Amount of BTC to receive
+        bytes20 pubKeyHash, // PubKey Hash used to spend Received BTC
+        uint32 offerValidFor // Offer validity
+    )
+```
+
+Recommendation:
+- A user can use a HD wallet to generate pubKeyHash.
+
+## Settlement
+
+Settlement is a multi step process:
+
+- Select a suitable offer
+- Generate HTLC Bitcoin address
+- Send BTC to that address
+- Wait for required confirmations
+- Generate the merkle proof and perform 1) Initialize Settlement with transaction proof, and hashedSecret and 2) Finalize Settlement revealing the secret
+
+### Sending Bitcoin
+
+#### Generating short order id
+
+1. Generate an Order Id 
+```
+   keccak256(concat(
+     <20-byte-contract-address> <offer-id-from-contract> <settler-ethereum-address> <pub-key-hash> <order-timestamp>
+   ));
+```
+
+2. Generate short order id
+```
+   shortOrderId = first 4 bytes of order id
+```
+
+#### Generating Bitcoin Address
+
+Bitcoin address is derived based on the following attributes:
+- *pubKeyHash*:  The counterparty's pubKeyHash set along with the offer
+- *secret*: A random 32-byte secret is generated and a hashed secret is generated using Bitcoin's `hash256` - double sha256
+- *lockTime*: Lock time should be set to offerExpiryTime + 2 days (in seconds)
+- *selfPubKeyHash* - PubKeyHash that will be used by sender of BTC to recover funds in cases where either the user or the counterparty changes their mind regarding the offer.
+
+The following script is used to generate a P2WSH Bitcoin Address
+
+```
+  04 <4-byte-short-order-id>  
+  OP_DROP 
+  OP_DUP 
+  OP_HASH160 
+  <20-bytepubKeyHash>  //  pubKeyHash from the offer
+  OP_EQUAL
+  OP_IF
+     OP_SWAP
+     OP_HASH256
+     <hashedSecret>    // generate a secret and compute hash256(secret) to get hashedSecret
+     OP_EQUALVERIFY
+  OP_ELSE
+    <locktime>   // Lock time should be offerExpiryTime(in seconds) + 2 days(in seconds)
+    <OP_CHECKLOCKTIMEVERIFY>
+    <OP_DROP>
+    <OP_DUP> 
+    <OP_HASH160>
+    <self-pubkey-hash> // Recovery pub key hash
+    OP_EQUALVERIFY,
+  OP_ENDIF,
+  OP_CHECKSIG, 
+```
+
+Recommendation:
+- A user can use a HD wallet to generate selfPubKeyHash at the time of settlement to make the process more secure.
+
+#### Making a Bitcoin Transaction
+
+Once a P2WSH address is generated, any standard wallets can be used to send BTC to that address.
+
+### Initiate Settlement
+
+Before initiating settlement, a user has to wait for the required number of confirmations (usually 6). The required number of confirmations can be queried from the contract.
+
+- User generates the merkle proof of the Bitcoin transaction
+- Submits `initiateSettlement` request to the offer book contract.
+
+```
+   function initiateSettlement(
+        uint256 offerId,
+        SettlementRequest calldata _settlement, // Settlement details containing hashedSecret, lockTime, pubKeyHash, and additional details like amount requested.
+        PaymentProof calldata proof // Merkle proof of payment
+    )
+```
+
+The contract locks the requested amount of ETH / ERC20 from the offer for 15 minutes before `finalizeSettlement` is called.
+
+### Finalize Settlement
+
+During `finalizeSettlement`, the secret is revealed, using which the user placing the offer can spend the Bitcoin received. The reason to have the settlement process as two step process is to ensure security of the transaction. During the 15 minutes lock window, the following cannot happen
+- Offer cannot be canceled by the user offering ETH.
+- Any other user is unable initiateSettlement for the selected amount of ETH / ERC20.
+
 # Bitcoin Header Chain
 
 A smart contract on Ethereum is initialized that keeps track of Bitcoin block headers. Instead of tracking all Bitcoin block headers, the contract would be initialized to start tracking Bitcoin block header at a recent height.
