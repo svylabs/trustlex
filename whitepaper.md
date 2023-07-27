@@ -209,23 +209,9 @@ Liquidity Providers play a vital role in any exchange ecosystem and decentralize
 
 The protocol identifies liquidity providers by the frequency of their trades. Initially the protocol identifies a user as a liquidity provider if they have completed 1 trade in a day.
 
-|              |    Regular User (E)        |     Liquidity Provider (E)                                                                   |
-|------------------------------------------------------------------------------------------------------------------------------------------|
-|                 |                           |                                                                                            |
-| Regular User(R-B) |  (R-E) pays 0.1% of deposited ETH/ERC20  |    (LP-E) pays 0.0% of deposited ETH/ERC20                                |
-|                 |  (R-B) sends 99.9% of satoshis           |    (R-B) sends 100% of satoshis                                             |
-|                 |  (R-B) receives 99.8% of ETH/ERC20       |    (RB) receives 99.9% of ETH/ERC20                                         |
-|                 |   Protocol fees: 0.2% in total         |        Protocol fees: 0.1% in total                                           |
-|                 |                                        |        Liquidity Provider receives: 100% of satoshis requested and pays 0 fees.|
-|-------------------------------------------------------------------------------------------------------------------------------------------|
-|              | (R-E) pays 0.1% of deposited ETH/ERC20         |    LP-E pays 0.1% of deposited ETH/ERC20                                  |
-|              | (LP-B) sends 99.8% of satoshis                 |    LP-B sends 99.9% of satoshis                                           |
-|  Liquidity   |  (LP-B) receives 99.9% of ETH/ERC20            |    LP-B receives 99.8% of ETH/ERC20                                       |
-|  Provider(LP-B) |  Protocol fees: 0.1% in total               |        Protocol fees: 0.2% in total                                       |
-|                 |   LP-B receives 99.9% of ETH/ERC20            |                                                                         |
-|                 |     R-E receives 99.8% of satoshis            |                                                                         |
-|                 |      LP-B profit: 0.1%                        |                                                                         |
-|-------------------------------------------------------------------------------------------------------------------------------------------|
+Here is a summary on how fee is distributed between the protocol and LP providers:
+
+![Fee Distribution](./images/fee_distribution.png)
    
 # Security
 
@@ -240,8 +226,6 @@ While the usecase we have presented is for trustless exchange of ETH or ERC20 to
 6. Stablecoin protocol with Native Bitcoin as collateral. This requires a custodian backed by threshold signature scheme to hold funds.
 
 # Roadmap
-
-# Team
 
 # Risks & Challenges
 
