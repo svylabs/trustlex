@@ -191,9 +191,53 @@ The contract also has a function to verify transaction inclusion proof that can 
 
 # Incentivization
 
+## Bitcoin Light Client
+
+While the exchange usecase doesn't require any incentive as the incentive to use the platform is to trustlessly perform the exchange. The exchange process assumes the availability of Bitcoin light client with updated Bitcoin block headers. To incentivse anyone to post Bitcoin block headers to smart contracts, the contract initially offers '42' TLX tokens, reducing by half every month, until the incentive reaches 0.01 TLX tokens. At which point, the incentive remains constant at 0.01 TLX tokens for every block submitted.
+
+TLX tokens are used in the following scenario:
+- Users can burn their TLX tokens to redeem any fees collected by the offer book contracts.
+- Use the TLX tokens to vote on governance proposals 
+    * To create new Offer book contracts
+    * To resolve any unresolved forks in Bitcoin header chain contracts
+
+This mechanism ensures, the Bitcoin light client is maintained by a community of participants.
+
+## Liquidity Providers
+
+Liquidity Providers play a vital role in any exchange ecosystem and decentralized exchanges are no exception. There are no Liquidity Pools for Bitcoin offered by the protocol, however, users are free to provide liquidity on their own, and custody their own funds.
+
+The protocol identifies liquidity providers by the frequency of their trades. Initially the protocol identifies a user as a liquidity provider if they have completed 1 trade in a day.
+
+              |    Regular User (E)        |     Liquidity Provider (E)
+-------------------------------------------------------------------------------------------------------------------------------------------
+                 |                           |
+ Regular User(R-B) |  (R-E) pays 0.1% of deposited ETH/ERC20  |    (LP-E) pays 0.0% of deposited ETH/ERC20
+                 |  (R-B) sends 99.9% of satoshis           |    (R-B) sends 100% of satoshis
+                 |  (R-B) receives 99.8% of ETH/ERC20       |    (RB) receives 99.9% of ETH/ERC20
+                 |   Protocol fees: 0.2% in total         |        Protocol fees: 0.1% in total
+                 |                                        |        Liquidity Provider receives: 100% of satoshis requested and pays 0 fees.
+---------------------------------------------------------------------------------------------------------------------------------------------
+              | (R-E) pays 0.1% of deposited ETH/ERC20         |    LP-E pays 0.1% of deposited ETH/ERC20 
+              | (LP-B) sends 99.8% of satoshis                 |    LP-B sends 99.9% of satoshis
+  Liquidity   |  (LP-B) receives 99.9% of ETH/ERC20            |    LP-B receives 99.8% of ETH/ERC20
+  Provider(LP-B) |  Protocol fees: 0.1% in total               |        Protocol fees: 0.2% in total
+                 |   LP-B receives 99.9% of ETH/ERC20            |
+                 |     R-E receives 99.8% of satoshis            |     
+                 |      LP-B profit: 0.1%                        |
+---------------------------------------------------------------------------------------------------------------------------------------
+   
 # Security
 
 # Use cases
+
+While the usecase we have presented is for trustless exchange of ETH or ERC20 tokens with Bitcoin which can be used by the following applications:
+1. Trustless wbtc to native BTC conversion.
+2. Trustless OTC exchange markets between Bitcoin and assets on Ethereum network.
+3. Use Native Bitcoin to purchase NFT on Ethereum without intermediaries or intermediary tokens.
+4. Use Native Bitcoin to purchase tokenized Real world Assets on Ethereum (and other networks).
+5. Lending protocol on Ethereum (or EVM supported networks) with Native Bitcoin as collateral. This require a custodian backed by threshold signature scheme to hold funds.
+6. Stablecoin protocol with Native Bitcoin as collateral. This requires a custodian backed by threshold signature scheme to hold funds.
 
 # Roadmap
 
