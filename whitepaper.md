@@ -256,8 +256,8 @@ Other incentives:
 
 * The protocol issues 20x the token reward when someone posts a fork block header. This is to incentivse
 * The protocol also inflates the token supply by 1% and sends it back to the wallet which originated the governance action. It is upto the external contract to distribute the governance proceeds to wallets that voted for a governance action. The following constitutes a governance action:
-- creating a new offerbook for BTC-token pair.
-- resolving a Bitcoin chain fork
+    - creating a new offerbook for BTC-token pair.
+    - resolving a Bitcoin chain fork
    
 # Security
 
