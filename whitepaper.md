@@ -13,7 +13,7 @@
     - [Settlement](#settlement)
         - [Sending Bitcoins](#sending-bitcoin)
         - [Submit payment proof](#submit-payment-proof)
-        - [Reveal secret to release ETH](#reveal-secret-to-withdraw-funds)
+        - [Reveal secret to release funds](#reveal-secret-to-withdraw-funds)
 - [Bitcoin Header Chain](#bitcoin-header-chain)
 - [Incentivzation](#incentivization)
     - [Bitcoin Light Client](#bitcoin-light-client)
