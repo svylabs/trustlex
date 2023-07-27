@@ -1,3 +1,29 @@
+# Table of Contents
+
+- [Abstract](#abstract)
+- [Introduction](#introduction)
+- [Background](#background)
+    - [Hash Time Lock Contracts](#hash-time-lock-contractshtlc)
+    - [Simplified Payment Verification](#simplified-payment-verification)
+- [Problem Statement](#problem-statement)
+- [Solution](#solution-protocol)
+- [Technical Details](#technical-details)
+    - [Offerbook Contract](#offerbook-contract)
+    - [Adding an offer](#adding-an-offer)
+    - [Settlement](#settlement)
+        - [Sending Bitcoins](#sending-bitcoin)
+        - [Initiate Settlement](#initiate-settlement)
+        - [Finalize Settlement](#finalize-settlement)
+- [Bitcoin Header Chain](#bitcoin-header-chain)
+- [Incentivzation](#incentivization)
+    - [Bitcoin Light Client](#bitcoin-light-client)
+    - [Liquidity Providers](#liquidity-providers)
+- [Security](#security)
+- [Use cases](#use-cases)
+- [Roadmap](#roadmap)
+- [Future work](#future-work)
+- [Conclusion](#conclusion)
+
 # Abstract
 
 A smart contract based protocol allows trustless exchange of Native Bitcoin to assets on Ethereum and other networks and vice-versa, where the funds on either side would be in control of the users themselves, and not any custodian. While solutions using centralized custodian of funds, and threshold-signature-scheme based custodians offer such an exchange at scale, the main benefit would be lost if the funds were still to be held by a custodian. Custodians have to ensure they are always online, not hacked, and should be trusted by the users. Atomic cross chain swaps offer part of the solution where users can exchange trustlessly in a self-custodial manner. But the main drawback of the atomic swap solution is in the UX. It is not intuitive enough for the users, order discoverability is hard and the users need to be online, monitor the transactions on either chain to complete the swap. In our work, we take smart contract elements from atomic swaps, use an orderbook based exchange on Ethereum, and have Bitcoin light client within Ethereum smart contracts to enable trustless swaps in a self-custodial manner, and with much better user experience - better order discoverability, allowing for fractional swaps, Bitcoin transactions are verified using smart contracts, instead of manually checking the chain and importantly where the funds are in control by the users at all times.
@@ -12,10 +38,12 @@ In this work, we propose a non-custodial solution to the problem of enabling tru
 
 To enable trustless cross-chain swaps from Bitcoin to Ethereum(extensible to other networks), we use the following core technologies.
 
-**Hash Time Lock Contracts(HTLC):**
+## Hash Time Lock Contracts(HTLC)
+
 HTLCs are a staple of cross-chain exchange protocols. Let's say, a user Bob wants to send funds to Alice, but also have the capability to redeem funds if it's not claimed within a time period for various reasons. This can be accomplished by using timelock contract (CheckLockTimeVerify on Bitcoin). Further, Alice should be able to claim the funds only after presenting a pre-image of a hash encoded into the Bitcoin P2WSH script. These two conditions can simultaneously be achieved using HTLC script. The reason for hash lock is to ensure that Alice can only claim funds after Bob has revealed the pre-image of the hash. The timelock makes it possible for Bob to recover funds after a certain time, for whatever reason - for example: Alice backs out of the deal.
 
-**Simplified Payment Verification:**
+## Simplified Payment Verification
+
 Simplified Payment Verification envisioned in the Bitcoin whitepaper is a primary ingredient in providing better user experience in trustless cross-chain swaps. By having a smart contract track Bitcoin block headers, verification of Bitcoin transactions can be done in an automated way by smart contracts executed on ethereum. After making Bitcoin transaction, the user generates a merkle proof of the transaction and submits the proof to the smart contract. The smart contract can verify if the transaction is included in Bitcoin block. This mechanism allows for a better user experience in the cross-chain exchange protocol.
 
 By combining these two technologies, we are able to offer seamless and secure user experience in our cross-chain exchange protocol.
