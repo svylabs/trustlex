@@ -36,7 +36,7 @@ Let's say there are two parties Alice and Bob. Alice has ETH on Ethereum, and Bo
 - Step 8: Contract verifies if it's a valid secret and releases the ETH funds to Bob.
 - Step 9: Alice can spend funds from BTC address using the secret.
 
-![Protocol](./protocol.svg)
+![Protocol](./images/protocol.svg)
 
 # Technical Details
 
