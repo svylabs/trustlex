@@ -8,12 +8,12 @@
 - [Problem Statement](#problem-statement)
 - [Solution](#solution-protocol)
 - [Technical Details](#technical-details)
-    - [Offerbook Contract](#offerbook-contract)
+    - [Offer book Contract](#offerbook-contract)
     - [Adding an offer](#adding-an-offer)
     - [Settlement](#settlement)
         - [Sending Bitcoins](#sending-bitcoin)
-        - [Initiate Settlement](#initiate-settlement)
-        - [Finalize Settlement](#finalize-settlement)
+        - [Submit payment proof](#submit-payment-proof)
+        - [Reveal secret to release ETH](#reveal-secret-to-withdraw-funds)
 - [Bitcoin Header Chain](#bitcoin-header-chain)
 - [Incentivzation](#incentivization)
     - [Bitcoin Light Client](#bitcoin-light-client)
@@ -157,9 +157,9 @@ Recommendation:
 
 Once a P2WSH address is generated, any standard wallets can be used to send BTC to that address.
 
-### Initiate Settlement
+### Submit payment proof
 
-Before initiating settlement, a user has to wait for the required number of confirmations (usually 6). The required number of confirmations can be queried from the contract.
+Before submitting payment proof, a user has to wait for the required number of confirmations (usually 6). The required number of confirmations can be queried from the contract.
 
 - User generates the merkle proof of the Bitcoin transaction
 - Submits `initiateSettlement` request to the offer book contract.
@@ -174,9 +174,9 @@ Before initiating settlement, a user has to wait for the required number of conf
 
 The contract locks the requested amount of ETH / ERC20 from the offer for 15 minutes before `finalizeSettlement` is called.
 
-### Finalize Settlement
+### Reveal secret to withdraw funds
 
-During `finalizeSettlement`, the secret is revealed, using which the user placing the offer can spend the Bitcoin received.  The contract verifies if the `hashedSecret` passed during `initiateSettlement` matches with the `hash256(`secret`)` before releasing the funds.
+During this step, the secret is revealed, using which the user placing the offer can spend the Bitcoin received.  The contract verifies if the `hashedSecret` passed during `initiateSettlement` matches with the `hash256(`secret`)` before releasing the funds.
 
 The reason to have the settlement process as two step process is to ensure security of the transaction. During the 15 minutes lock window, the following cannot happen
 - Offer cannot be canceled by the user offering ETH.
