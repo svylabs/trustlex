@@ -57,6 +57,8 @@ Atomic swaps are the closest to the solution presented in this whitepaper. Atomi
 
 ### Threshold-Signature-Scheme based Liquidity Pools with AMM
 
+There are trust minimised liquidity pools using threshold signature scheme in operation today, like the one offered by Thorchain, and another offered by TBTC network. These solutions are only trust minimised, where liquidity pools are managed by a decentralized custodian who are incentivised to hold BTC / ETH (or ERC20) by staking RUNE/T tokens. While these solutions are great, it achieves economic security only when the staked token value is more than the funds held by the contract. If the funds held by the custodian is more than the staked value, there is an incentive to cheat the system and steal user BTC / ETH, as they are more valuable than the tokens like RUNE / T. Thus, this solution is trust minimised at best and is not suitable for trustless swaps involving large orders.
+
 # Problem Statement
 
 Let's say there are two parties Alice and Bob. Alice has ETH on Ethereum, and Bob has Native BTC. Further, Alice and Bob do not know each other nor have a way to discover each other. Both Alice and Bob are unwilling to use centralized exchange to complete the swap nor use an escrow/custodian to park their funds during the swap process. They want to perform the exchange trustlessly.
@@ -258,7 +260,7 @@ The contract initially offers '42' TLX tokens for each block submitted, reducing
 
 * There will be pre-mine of TLX tokens for the following cases
   - Community building (5000 TLX, announed already for 100 people)
-  - Testing on testnet (50000 TLX for 50 people)
+  - Community members testing the protocol on testnet (50000 TLX for 50 people)
 * There is no supply cap of TLX tokens.
 * There is a burning mechanism of TLX tokens where user can burn TLX token to redeem any proportional fees accrued by the protocol. This is a one time incentive for token holder.
 
