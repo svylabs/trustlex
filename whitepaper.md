@@ -12,8 +12,8 @@
     - [Adding an offer](#adding-an-offer)
     - [Settlement](#settlement)
         - [Sending Bitcoins](#sending-bitcoin)
-        - [Submit payment proof](#submit-payment-proof)
-        - [Reveal secret to withdraw funds](#reveal-secret-to-withdraw-funds)
+        - [Submitting payment proof](#submit-payment-proof)
+        - [Revealing secret to withdraw funds](#reveal-secret-to-withdraw-funds)
 - [Bitcoin Header Chain](#bitcoin-header-chain)
 - [Incentivization](#incentivization)
     - [Bitcoin Light Client](#bitcoin-light-client)
@@ -83,7 +83,7 @@ This protocol assumes that the Trustlex contract has access to Bitcoin block hea
 
 # Technical Details
 
-## OfferBook contract
+## Offer book contract
 
 An offer book contract holds all the available offers. 
 
