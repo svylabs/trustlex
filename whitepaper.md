@@ -256,7 +256,9 @@ Here is a summary on how fee is distributed between the protocol and LP provider
 
 The contract initially offers '42' TLX tokens for each block submitted, reducing the incentive by half every month, until the incentive reaches 0.01 TLX tokens per block submitted. At which point, the incentive remains constant at 0.01 TLX tokens for every block submitted.
 
-* There is no pre-mine of TLX tokens.
+* There will be pre-mine of TLX tokens for the following cases
+  - Community building (5000 TLX, announed already for 100 people)
+  - Testing on testnet (50000 TLX for 50 people)
 * There is no supply cap of TLX tokens.
 * There is a burning mechanism of TLX tokens where user can burn TLX token to redeem any proportional fees accrued by the protocol. This is a one time incentive for token holder.
 
@@ -290,7 +292,7 @@ Smart contract transfers funds to Bob after Bob reveals secret.
 There are two cases here:
 1. Bob hasn't submitted payment proof yet: In this case, Alice will be able to cancel the offer and funds  (ERC20 / ETH) will be returned to Alice immediately, and Bob can redeem BTC after original offer expiry + 2 days. There is a slight disadvantage to Bob here as their BTC will be locked for some duration.
 2. Bob submits payment proof: In this case, Alice cannot cancel the offer, and the funds will be locked for 15 minutes for Bob to submit the secret.  Alice can cancel the offer after expiry of the lock, but if Bob has revealed the secret during that 15 minute window, only the portion of offer that was not settled will be cancelled.
- 
+
 ### Bob changes mind after sending BTC
 
 There are two cases here:
