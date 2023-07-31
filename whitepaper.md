@@ -49,6 +49,14 @@ Simplified Payment Verification envisioned in the Bitcoin whitepaper is a primar
 
 By combining these two technologies, we are able to offer seamless and secure user experience in our cross-chain exchange protocol.
 
+## Existing exchange mechanisms
+
+### Atomic Swaps
+
+Atomic swaps are the closest to the solution presented in this whitepaper. Atomic Swaps are a great solution once the two parties have been identified, and know exactly how much each party will need to transfer to the other party. Both these problems are the difficult problems.
+
+### Threshold-Signature-Scheme based Liquidity Pools with AMM
+
 # Problem Statement
 
 Let's say there are two parties Alice and Bob. Alice has ETH on Ethereum, and Bob has Native BTC. Further, Alice and Bob do not know each other nor have a way to discover each other. Both Alice and Bob are unwilling to use centralized exchange to complete the swap nor use an escrow/custodian to park their funds during the swap process. They want to perform the exchange trustlessly.
@@ -160,7 +168,7 @@ Recommendation:
 
 Once a P2WSH address is generated, any standard wallets can be used to send BTC to that address.
 
-### Submit payment proof
+### Submitting payment proof
 
 Before submitting payment proof, a user has to wait for the required number of confirmations (usually 6). The required number of confirmations can be queried from the contract.
 
@@ -177,7 +185,7 @@ Before submitting payment proof, a user has to wait for the required number of c
 
 The contract locks the requested amount of ETH / ERC20 from the offer for 15 minutes before `finalizeSettlement` is called.
 
-### Reveal secret to withdraw funds
+### Revealing secret to withdraw funds
 
 During this step, the secret is revealed, using which the user placing the offer can spend the Bitcoin received.  The contract verifies if the `hashedSecret` passed during `initiateSettlement` matches with the `hash256(`secret`)` before releasing the funds.
 
@@ -261,12 +269,33 @@ Other incentives:
    
 # Security
 
+## Scenarios
+
 ## Security of Funds
 
 In the protocol discussed, funds are always held by private keys of the owners. There are no centralized entities or multisig holding the funds.
 
 On the Bitcoin side: Funds are locked in HTLC contract and can be withdrawn at the conclusion of the protocol.
 On Ethereum side: Funds are locked in Smart contract and can be withdrawn at anytime or at the conclusion of the protocol.
+
+### Happy Case
+
+In the happy case, where both Alice and Bob decide to run through with the agreed protocol.
+
+Alice can withdraw BTC after Bob reveals the secret, during this time Bob cannot withdraw BTC.
+Smart contract transfers funds to Bob after Bob reveals secret.
+
+### Alice cancels the Offer after Bob sends BTC
+
+There are two cases here:
+1. Bob hasn't submitted payment proof yet: In this case, Alice will be able to cancel the offer and funds  (ERC20 / ETH) will be returned to Alice immediately, and Bob can redeem BTC after original offer expiry + 2 days. There is a slight disadvantage to Bob here as their BTC will be locked for some duration.
+2. Bob submits payment proof: In this case, Alice cannot cancel the offer, and the funds will be locked for 15 minutes for Bob to submit the secret.  Alice can cancel the offer after expiry of the lock, but if Bob has revealed the secret during that 15 minute window, only the portion of offer that was not settled will be cancelled.
+ 
+### Bob changes mind after sending BTC
+
+There are two cases here:
+1. Bob submits payment proof without revealing the secret:  In this case, Alice's funds will be locked for 15 minutes.
+2. Bob doesn't submit payment proof:  In this case, Alice's funds will not be locked.
 
 ## Security of Cryptographic operations
 
