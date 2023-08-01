@@ -137,7 +137,7 @@ Bitcoin address is derived based on the following attributes:
 - *lockTime*: Lock time should be set to offerExpiryTime + 2 days (in seconds)
 - *selfPubKeyHash* - PubKeyHash that will be used by sender of BTC to recover funds in cases where either the user or the counterparty changes their mind regarding the offer.
 
-The following script is used to generate a P2WSH Bitcoin Address
+The following script is currently used to generate a P2WSH Bitcoin Address.
 
 ```
   04 <4-byte-short-order-id>  
@@ -159,6 +159,28 @@ The following script is used to generate a P2WSH Bitcoin Address
     <OP_HASH160>
     <self-pubkey-hash> // Recovery pub key hash
     OP_EQUALVERIFY,
+  OP_ENDIF,
+  OP_CHECKSIG, 
+```
+
+In the future, the above script will be replaced by the following as it lowers the number of bytes in the witness script resulting in lower fees for users.
+
+```
+  04 <4-byte-short-order-id>  
+  OP_DROP 
+  OP_SIZE
+  32
+  OP_EQUAL 
+  OP_IF
+     OP_HASH160
+     <hashedSecret>    // generate a secret and compute hash160(secret) to get hashedSecret
+     OP_EQUALVERIFY
+     <receiver-public-key>
+  OP_ELSE
+    <locktime>   // Lock time should be offerExpiryTime(in seconds) + 2 days(in seconds)
+    OP_CHECKLOCKTIMEVERIFY
+    OP_DROP
+    <recovery-public-key> // Recovery pub key
   OP_ENDIF,
   OP_CHECKSIG, 
 ```
