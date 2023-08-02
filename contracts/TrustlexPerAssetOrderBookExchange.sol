@@ -483,7 +483,7 @@ contract TrustlexPerAssetOrderBookExchange {
     }
 
     function cancelOffer(uint256 offerId) public payable {
-        /*
+        
         require(offers[offerId].offeredBlockNumber > 0, "Invalid Offer ID");
         CompactMetadata memory compact = deconstructMetadata();
 
@@ -517,7 +517,7 @@ contract TrustlexPerAssetOrderBookExchange {
                 if (
                     existingSettlementRequest.expiryTime < block.timestamp &&
                     existingSettlementRequest.isExpired == false &&
-                    existingSettlementRequest.paymentProofSubmitted == false
+                    existingSettlementRequest.settled == false
                 ) {
                     // Decrease the off satoshi resvered amou t for expired
                     offer.satoshisReserved -= existingSettlementRequest
@@ -552,7 +552,7 @@ contract TrustlexPerAssetOrderBookExchange {
         } else {
             IERC20(compact.tokenContract).transfer(offeredBy, payAmount);
         }
-        */
+        
 
         // update the
 
