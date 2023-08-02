@@ -57,7 +57,7 @@ Atomic swaps are the closest to the solution presented in this whitepaper. Atomi
 
 ### Threshold-Signature-Scheme based Liquidity Pools with AMM
 
-There are trust minimised liquidity pools using threshold signature scheme in operation today, like the one offered by Thorchain, and another offered by TBTC network. These solutions are only trust minimised, where liquidity pools are managed by a decentralized custodian who are incentivised to hold BTC / ETH (or ERC20) by staking RUNE/T tokens. While these solutions are great, it achieves economic security only when the staked token value is more than the funds held by the contract. If the funds held by the custodian is more than the staked value, there is an incentive to cheat the system and steal user BTC / ETH, as they are more valuable than the tokens like RUNE / T. Thus, this solution is trust minimised at best and is not suitable for trustless swaps involving large orders.
+There are trust minimised liquidity pools using threshold signature scheme in operation today, like the one offered by Thorchain, and another offered by TBTC network. These solutions are only trust minimised, where liquidity pools are managed by a decentralized custodian who are incentivised to hold BTC / ETH (or ERC20) by staking RUNE/T tokens. While these solutions are great, it achieves economic security only when the staked token value is more than the funds held by the contract. If the funds held by the custodian is more than the staked value, there is an incentive to cheat the system and steal user BTC / ETH, as they are more valuable than the tokens like RUNE / T.
 
 # Problem Statement
 
