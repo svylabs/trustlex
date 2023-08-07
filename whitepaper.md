@@ -57,7 +57,7 @@ Atomic swaps are the closest to the solution presented in this whitepaper. Atomi
 
 ### Threshold-Signature-Scheme based Liquidity Pools with AMM
 
-There are trust minimised liquidity pools using threshold signature scheme in operation today, like the one offered by Thorchain, and another offered by TBTC network. These solutions are only trust minimised, where liquidity pools are managed by a decentralized custodian who are incentivised to hold BTC / ETH (or ERC20) by staking RUNE/T tokens. While these solutions are great, it achieves economic security only when the staked token value is more than the funds held by the contract. If the funds held by the custodian is more than the staked value, there is an incentive to cheat the system and steal user BTC / ETH, as they are more valuable than the tokens like RUNE / T.
+There are trust minimised liquidity pools using threshold signature scheme in operation today, like the one offered by Thorchain, and another offered by TBTC network. These solutions are trust minimised, where liquidity pools are managed by decentralized custodians who are incentivised to hold BTC / ETH (or ERC20) by staking RUNE/T tokens. While these solutions are great, it achieves economic security only when the staked token value is more than the funds held by the contract. If the funds held by the custodian is more than the staked value, there is an incentive to cheat the system and steal user BTC / ETH, as they are more valuable than the tokens like RUNE / T.
 
 # Problem Statement
 
@@ -346,12 +346,12 @@ While the usecase we have presented is for trustless exchange of ETH or ERC20 to
 6. Stablecoin protocol with Native Bitcoin as collateral. This requires a custodian backed by threshold signature scheme to hold funds.
 
 # Roadmap
-1. Launch Trustlex Offer Book to enable Native BTC <=> ETH conversion using centralized Bitcoin Header Chain oracle (August 2023)
-2. Launch Trustlex Offer Book to enable Native BTC <=> WBTC conversion using centralized Bitcoin header Chain oracle (August 2023)
-3. Launch Incentivized Bitcoin Header Chain and create new offer book contracts for various pairs. (September 2023)
-4. Launch Incentivized Bitcoin Header chain on other platforms supporting EVM (Arbitrum, Avalanche, Tezos) (September 2023 onwards)
-5. Launch Incentivized Bitcoin Header and exchange contracts on Non-EVM platforms (Osmosis, Near, Tezos mainnet) (January 2024)
-6. Launch lending application with Bitcoin as collateral by custodying Bitcoin using Threshold Signature Scheme (January 2024)
+1. Launch Trustlex Offer Book to enable Native BTC <=> ETH conversion using centralized Bitcoin Header Chain oracle (September 2023)
+2. Launch Trustlex Offer Book to enable Native BTC <=> WBTC conversion using centralized Bitcoin header Chain oracle (September 2023)
+3. Launch Incentivized Bitcoin Header Chain and create new offer book contracts for various pairs. (Q4 2023)
+4. Launch Incentivized Bitcoin Header and exchange contracts on Arbitrum and if possible Etherlink on Tezos (Q4 2023)
+5. Launch Bitcoin Liquidity Pool using Threshold Signature Scheme(frost) on Smart Rollups on Tezos to facilitate Trustless minting and exchange of native Bitcoin on Tezos (Q1 2024)
+6. Launch Trustlex Offer Book contracts on Tezos to enable cross-chain swaps from Tezos (Q1 2024)
 
 # Future work
 1. Evaluate and Integrate Decentralized ID solutions to comply with local regulations (eg: MiCA).
